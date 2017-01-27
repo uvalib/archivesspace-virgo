@@ -1,0 +1,6 @@
+solrUrl:http://localhost:8983/solr/virgo/update
+archivesSpaceUrl:http://localhost:8089/
+username:
+password:
+repositoryId:7
+archivalObjectId:210
