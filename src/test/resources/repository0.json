@@ -1,0 +1,22 @@
+{
+"lock_version":3,
+"repo_code":"uva-sc",
+"name":"Albert and Shirley Small Special Collections Library",
+"org_code":"ViU",
+"parent_institution_name":"University of Virginia, Special Collections Dept.",
+"url":"http://www.lib.virginia.edu/small",
+"image_url":"http://ead.lib.virginia.edu/vivaead/logos/uva-sc.jpg",
+"created_by":"admin",
+"last_modified_by":"fake",
+"create_time":"2015-08-11T21:15:24Z",
+"system_mtime":"2017-08-18T21:45:42Z",
+"user_mtime":"2017-07-20T18:58:42Z",
+"publish":true,
+"country":"US",
+"jsonmodel_type":"repository",
+"uri":"/repositories/3",
+"display_string":"Albert and Shirley Small Special Collections Library (uva-sc)",
+"agent_representation":{
+"ref":"/agents/corporate_entities/2"
+}
+}

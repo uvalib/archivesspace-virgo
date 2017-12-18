@@ -1,6 +1,9 @@
 solrUrl:http://localhost:8983/solr/virgo/update
 archivesSpaceUrl:http://localhost:8089/
+indexOutputDir:index
+logOutputDir:logs
 username:
 password:
-repositoryId:7
-archivalObjectId:210
+tracksysDbHost:
+tracksysDbUsername:
+tracksysDbPassword:
