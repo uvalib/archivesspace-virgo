@@ -50,7 +50,7 @@ public class ASpaceAccessionTest {
 
         List<String> ids = SolrHelper.getSolrXmlFieldValues("id", xmlDoc);
         assertEquals(1, ids.size());
-        assertEquals("VIU_2018_0013", ids.get(0));
+        assertEquals("as:0a0", ids.get(0));
 
     }
 
