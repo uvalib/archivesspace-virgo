@@ -13,7 +13,7 @@ public class ASpaceCollection extends ASpaceObject {
 
     @Override
     public boolean isShadowed() throws IOException {
-        return isPublished();
+        return !isPublished();
     }
 
     private String assertNotNull(final String value) {
