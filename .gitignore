@@ -3,3 +3,4 @@ target
 config.properties
 example.xml
 solr-output
+src/main/java/edu/virginia/lib/indexing/localtools/

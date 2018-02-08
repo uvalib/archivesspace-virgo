@@ -6,6 +6,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.xpath.XPathExpressionException;
@@ -43,7 +44,7 @@ public class ASpaceAccessionTest {
     }
 
     @Test
-    public void testRequiredFields() throws IOException, XMLStreamException, SQLException, XPathExpressionException {
+    public void testRequiredFields() throws IOException, XMLStreamException, SQLException, XPathExpressionException, SAXException {
         ASpaceAccession a = new ASpaceAccession(client, REF);
 
         Document xmlDoc = XmlHelper.parseXmlFile(a.generateSolrAddDoc(OUTPUT_DIR));

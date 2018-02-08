@@ -3,6 +3,8 @@ package edu.virginia.lib.indexing.tools;
 import edu.virginia.lib.indexing.ASpaceAccession;
 import edu.virginia.lib.indexing.ASpaceCollection;
 import edu.virginia.lib.indexing.ArchivesSpaceClient;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -71,7 +73,15 @@ public class IndexRecords {
             for (String resourceId : c.listResourceIds(repoId)) {
                 final File f = getSolrOutputFile(output, resourceId);
                 ASpaceCollection r = new ASpaceCollection(c, resourceId);
-                if (f.exists() && getSolrXmlFieldValues("aspace_version_facet", parseXmlFile(f)).contains(String.valueOf(r.getLockVersion()))) {
+                Document solrDoc = null;
+                if (f.exists()) {
+                    try {
+                        solrDoc = parseXmlFile(f);
+                    } catch (SAXException e) {
+                        System.out.println("Unable to parse existing SOLR document, overwriting! (" + f.getName() + ")");
+                    }
+                }
+                if (solrDoc != null && getSolrXmlFieldValues("aspace_version_facet", solrDoc).contains(String.valueOf(r.getLockVersion()))) {
                     published.println(resourceId + ": skipped because lock number hasn't changed since last index");
                 } else {
                     try {

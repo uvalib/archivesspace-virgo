@@ -27,10 +27,10 @@ import java.util.regex.Pattern;
  */
 public class SolrHelper {
 
-    public static void postFileToSolr(final String solrUrl, final File solrDoc) throws IOException {
+    public static void postFileToSolr(final String solrUrl, final File solrDoc, boolean commit) throws IOException {
         System.out.println("Writing doc to solr " + solrUrl + "...");
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost post = new HttpPost(solrUrl + "?commit=true");
+            HttpPost post = new HttpPost(solrUrl + (commit ? "?commit=true" : ""));
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
             builder.addBinaryBody(solrDoc.getName(), solrDoc, ContentType.create("text/xml", "UTF-8"), solrDoc.getName());
             post.setEntity(builder.build());

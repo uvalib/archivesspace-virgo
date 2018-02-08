@@ -6,7 +6,7 @@ package edu.virginia.lib.indexing.helpers;
 public class UvaHelper {
 
     public static String normalizeLocation(final String location) {
-        if (location.equals("Albert and Shirley Small Special Collections Library")) {
+        if (location.equals("Albert and Shirley Small Special Collections Library") || location.equals("University of Virginia, Special Collections Dept.")) {
             return "Special Collections";
         } else if (location.equals("University of Virginia, Law Library")) {
             return "Law Library";
