@@ -8,7 +8,7 @@ public class UvaHelper {
     public static String normalizeLocation(final String location) {
         if (location.equals("Albert and Shirley Small Special Collections Library") || location.equals("University of Virginia, Special Collections Dept.")) {
             return "Special Collections";
-        } else if (location.equals("University of Virginia, Law Library")) {
+        } else if (location.equals("University of Virginia, Law Library") || location.equals("Arthur J. Morris Law Library Special Collections")) {
             return "Law Library";
         } else if (location.equals("Claude Moore Health Sciences Library")) {
             return "Health Sciences";
