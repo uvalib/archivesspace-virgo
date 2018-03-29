@@ -110,9 +110,12 @@ public abstract class ASpaceObject {
 
         addField(xmlOut, "id", shortRefId);
         String hid = getId();
-        if (isUniqueVirgoId(hid)) {
-            addField(xmlOut, "alternate_id_facet", hid);
-        }
+        // Despite it's name, "alternate_id_facet" currently must only be an alternate id that represents a
+        // distinct digital object for which there's an IIIF manifest, rights_wrapper_url, etc.
+        //
+        //if (isUniqueVirgoId(hid)) {
+        //    addField(xmlOut, "alternate_id_facet", hid);
+        //}
         addField(xmlOut, "aspace_version_facet", String.valueOf(getLockVersion()));
         addField(xmlOut, "call_number_facet", callNumber);
         addField(xmlOut, "main_title_display", title);
@@ -262,7 +265,7 @@ public abstract class ASpaceObject {
                 for (int i = 0; i < iiif.size(); i++) {
                     final String url = iiif.get(i);
                     try {
-                        addDigitalImages(url, xmlOut, manifestsIncluded == 0);
+                        addDigitalImages(url, xmlOut, true);
                         manifestsIncluded++;
                     } catch (IOException ex) {
                         System.err.println("Unable to fetch manifest: " + url);
@@ -271,19 +274,23 @@ public abstract class ASpaceObject {
             }
             if (manifestsIncluded > 0) {
                 addField(xmlOut, "feature_facet", "iiif");
+                addField(xmlOut, "format_facet", "Online");
             } else {
                 addField(xmlOut, "thumbnail_url_display", "http://iiif.lib.virginia.edu/iiif/static:6/full/!115,125/0/default.jpg");
             }
 
+            // Despite it's name, "alternate_id_facet" currently must only be an alternate id that represents a
+            // distinct digital object for which there's an IIIF manifest, rights_wrapper_url, etc.
+            //
             // related accessions (use for alternate ids)
-            final JsonValue accessions = record.get("related_accessions");
-            if (accessions != null && accessions.getValueType() == JsonValue.ValueType.ARRAY) {
-                for (JsonValue a : (JsonArray) accessions) {
-                    final String ref = ((JsonObject) a).getString("ref");
-                    final ASpaceAccession accession = new ASpaceAccession(c, ref);
-                    addField(xmlOut, "alternate_id_facet", accession.getId());
-                }
-            }
+            //final JsonValue accessions = record.get("related_accessions");
+            //if (accessions != null && accessions.getValueType() == JsonValue.ValueType.ARRAY) {
+            //    for (JsonValue a : (JsonArray) accessions) {
+            //        final String ref = ((JsonObject) a).getString("ref");
+            //        final ASpaceAccession accession = new ASpaceAccession(c, ref);
+            //        addField(xmlOut, "alternate_id_facet", accession.getId());
+            //    }
+            //}
 
             // notes (right now, we only include the scope notes)
             final JsonValue notes = record.get("notes");
@@ -416,6 +423,14 @@ public abstract class ASpaceObject {
                 throw new RuntimeException("Unable to get IIIF manifest at " + manifestUrl + " (" + response.getStatusLine().toString() + ")");
             }
             JsonObject iiifManifest = Json.createReader(response.getEntity().getContent()).readObject();
+            final String manifestId = iiifManifest.getString("@id");
+            String shortManifestId = manifestId.substring(manifestId.lastIndexOf('/') + 1);
+            if (shortManifestId.equals("iiif-manifest.json")) {
+                // hack for Shepherd until it's in the tracking system
+                shortManifestId = "as:3r273";
+            }
+            addField(xmlOut, "alternate_id_facet", shortManifestId);
+            addField(xmlOut, "individual_call_number_display", iiifManifest.getString("label"));
             if (thumbnail) {
                 String thumbnailUrl = iiifManifest.getJsonArray("sequences").getJsonObject(0).getJsonArray("canvases").getJsonObject(0).getString("thumbnail");
                 Matcher resizeMatcher = Pattern.compile("(https://.*/full/)[^/]*(/.*)").matcher(thumbnailUrl);
