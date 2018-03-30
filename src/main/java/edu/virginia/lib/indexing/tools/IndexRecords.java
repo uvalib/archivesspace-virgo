@@ -34,6 +34,10 @@ public class IndexRecords {
                 p.getProperty("username"),
                 p.getProperty("password"));
 
+        final String host = p.getProperty("tracksysDbHost");
+        final String user = p.getProperty("tracksysDbUsername");
+        final String pass = p.getProperty("tracksysDbPassword");
+
         final File output = new File(p.getProperty("indexOutputDir"));
         final File logs = new File(p.getProperty("logOutputDir"));
 
@@ -60,7 +64,7 @@ public class IndexRecords {
                 //    published.println(accessionId + ": skipped because lock number hasn't changed since last index");
                 //} else {
                     try {
-                        a.generateSolrAddDoc(output);
+                        a.generateSolrAddDoc(output, host, user, pass);
                         published.println(accessionId + ": " + a.getId());
                         published.flush();
                     } catch (Throwable t) {
@@ -85,7 +89,7 @@ public class IndexRecords {
                     published.println(resourceId + ": skipped because lock number hasn't changed since last index");
                 } else {
                     try {
-                        r.generateSolrAddDoc(output);
+                        r.generateSolrAddDoc(output, host, user, pass);
                         published.println(resourceId + ": " + r.getId());
                         published.flush();
                     } catch (Throwable t) {

@@ -47,7 +47,7 @@ public abstract class ASpaceObject {
     protected ArchivesSpaceClient c;
 
     protected JsonObject record;
-    
+
     public ASpaceObject(ArchivesSpaceClient aspaceClient, final String refId) throws IOException {
         this.c = aspaceClient;
         record = c.resolveReference(refId);
@@ -71,7 +71,6 @@ public abstract class ASpaceObject {
         return record.getInt("lock_version");
     }
 
-
     /**
      * Gets a solr-ready identifier for the resource that comes from the ASpace ID.
      */
@@ -92,7 +91,7 @@ public abstract class ASpaceObject {
         return sb.toString();
     }
 
-    public File generateSolrAddDoc(final File outputDir) throws IOException, XMLStreamException, SQLException {
+    public File generateSolrAddDoc(final File outputDir, final String dbHost, final String dbUser, final String dbPassword) throws IOException, XMLStreamException, SQLException {
         final String shortRefId = getIdFromRef(record.getString("uri"));
         final String callNumber = getCallNumber();
         final String title = record.getString("title");
@@ -120,6 +119,7 @@ public abstract class ASpaceObject {
         addField(xmlOut, "call_number_facet", callNumber);
         addField(xmlOut, "main_title_display", title);
         addField(xmlOut, "title_text", title);
+        addField(xmlOut, "source_facet", "ArchivesSpace");
         final boolean shadowed = isShadowed();
         addField(xmlOut, "shadowed_location_facet", shadowed ? "HIDDEN" : "VISIBLE");
         if (!shadowed) {
@@ -265,7 +265,7 @@ public abstract class ASpaceObject {
                 for (int i = 0; i < iiif.size(); i++) {
                     final String url = iiif.get(i);
                     try {
-                        addDigitalImages(url, xmlOut, true);
+                        addDigitalImages(url, xmlOut, true, dbHost, dbUser, dbPassword);
                         manifestsIncluded++;
                     } catch (IOException ex) {
                         System.err.println("Unable to fetch manifest: " + url);
@@ -416,7 +416,7 @@ public abstract class ASpaceObject {
 
     }
 
-    private static void addDigitalImages(final String manifestUrl, final XMLStreamWriter xmlOut, boolean thumbnail) throws IOException, XMLStreamException {
+    private static void addDigitalImages(final String manifestUrl, final XMLStreamWriter xmlOut, boolean thumbnail, final String dbHost, final String dbUser, final String dbPassword) throws IOException, XMLStreamException, SQLException {
         HttpGet httpGet = new HttpGet(manifestUrl);
         try (CloseableHttpResponse response = HttpClients.createDefault().execute(httpGet)) {
             if (response.getStatusLine().getStatusCode() != 200) {
@@ -427,8 +427,12 @@ public abstract class ASpaceObject {
             String shortManifestId = manifestId.substring(manifestId.lastIndexOf('/') + 1);
             if (shortManifestId.equals("iiif-manifest.json")) {
                 // hack for Shepherd until it's in the tracking system
-                shortManifestId = "as:3r273";
+                shortManifestId = "MSS16152";
             }
+
+            final String rsUri = iiifManifest.getString("license");
+            addRightsFields(rsUri, xmlOut, shortManifestId, dbHost, dbUser, dbPassword);
+
             addField(xmlOut, "alternate_id_facet", shortManifestId);
             addField(xmlOut, "individual_call_number_display", iiifManifest.getString("label"));
             if (thumbnail) {
@@ -460,9 +464,9 @@ public abstract class ASpaceObject {
         return normalizeLocation(name);
     }
 
-    private void addRightsFields(final String uri, XMLStreamWriter w, final String id, final String tracksysDbHost, final String tracksyDbUsername, final String tracksysDbPassword) throws SQLException, XMLStreamException {
+    private static void addRightsFields(final String uri, XMLStreamWriter w, final String pid, final String tracksysDbHost, final String tracksysDbUsername, final String tracksysDbPassword) throws SQLException, XMLStreamException {
         DriverManager.registerDriver(new com.mysql.jdbc.Driver());
-        String connectionUrl = "jdbc:mysql://" + tracksysDbHost + "/tracksys_production?user=" + tracksyDbUsername + "&password=" + tracksysDbPassword;
+        String connectionUrl = "jdbc:mysql://" + tracksysDbHost + "/tracksys_production?user=" + tracksysDbUsername + "&password=" + tracksysDbPassword;
         Connection conn = DriverManager.getConnection(connectionUrl);
         try {
             final String query = "SELECT name, uri, statement, commercial_use, educational_use, modifications from use_rights where uri=?";
@@ -472,7 +476,7 @@ public abstract class ASpaceObject {
             try {
                 if (rs.next()) {
                     addField(w, "feature_facet", "rights_wrapper");
-                    addField(w, "rights_wrapper_url_display", RIGHTS_WRAPPER_URL + "?pid=" + id + "&pagePid=");
+                    addField(w, "rights_wrapper_url_display", RIGHTS_WRAPPER_URL + "?pid=" + pid + "&pagePid=");
                     addField(w, "rs_uri_display", uri);
                     // TODO: add citation below... preferably generated from ASPACE using a DOI
                     addField(w, "rights_wrapper_display", rs.getString("statement"));
