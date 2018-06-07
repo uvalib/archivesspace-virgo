@@ -4,6 +4,12 @@ import edu.virginia.lib.indexing.helpers.JsonHelper;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClients;
+import org.marc4j.MarcStreamWriter;
+import org.marc4j.MarcWriter;
+import org.marc4j.marc.DataField;
+import org.marc4j.marc.MarcFactory;
+import org.marc4j.marc.Record;
+import org.marc4j.marc.Subfield;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -16,6 +22,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.Connection;
@@ -27,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -513,6 +521,102 @@ public abstract class ASpaceObject {
 
     public void printOutRawData() {
         JsonHelper.writeOutJson(record);
+    }
+
+    public void writeCirculationRecord(File file) throws IOException {
+    	//make MARC record with 245 and 590 fields
+		MarcFactory factory = MarcFactory.newInstance();
+		Record r = factory.newRecord();
+		DataField df;
+		Subfield sf;
+		
+		String title = record.getString("title");
+        char nonIndexChars = '0';
+        if (title.startsWith("A "))
+        	nonIndexChars = '2';
+        else if (title.startsWith("The "))
+        	nonIndexChars = '4';
+        
+        df = factory.newDataField("245", '0', nonIndexChars);
+		sf = factory.newSubfield('a', title);
+		df.addSubfield(sf);
+		r.addVariableField(df);
+		
+		df = factory.newDataField("590", '1', ' ');
+		sf = factory.newSubfield('a', "From ArchivesSpace: " + record.getString("record_uri"));
+		df.addSubfield(sf);
+		r.addVariableField(df);
+		
+		
+		
+		//pull desired resource from ArchivesSpace, get reference for each unique top_container
+        HashSet<String> topContainers = new HashSet<String>();
+        JsonArray children = record.getJsonArray("children");
+        
+        for (JsonValue child : children) {
+        	if (((JsonObject)child).getString("node_type").equals("archival_object")) {
+        		ASpaceObject temp;
+        		if (this instanceof ASpaceCollection)
+        			temp = new ASpaceCollection(c, ((JsonObject)child).getString("record_uri"));
+        		else
+        			temp = new ASpaceAccession(c, ((JsonObject)child).getString("record_uri"));
+        		
+        		JsonArray instances = temp.record.getJsonArray("instances");
+        		
+        		for (JsonValue instance : instances) {
+        			JsonObject subContainer = ((JsonObject)instance).getJsonObject("sub_container");
+        			topContainers.add(subContainer.getJsonObject("top_container").getString("ref"));
+        		}
+        	}
+        }
+        
+        
+        
+        //generate a 999 field for each top_container
+        for (String s : topContainers) {
+        	ASpaceObject topContainer;
+        	if (this instanceof ASpaceCollection)
+        		topContainer = new ASpaceCollection(c, s);
+        	else
+        		topContainer = new ASpaceAccession(c, s);
+        	
+        	df = factory.newDataField("999", ' ', ' ');
+    		
+    		String barcode;
+    		if (topContainer.record.get("barcode") != null) {
+    			barcode = topContainer.record.getString("barcode");
+        	} else {
+    			String uri = topContainer.record.getString("uri");
+    			String topContainerNumber = uri.substring(uri.lastIndexOf("/") + 1);
+    			String repository = uri.split("/")[2];
+    			barcode = "AS:R" + repository + "C" + topContainerNumber;
+    		}
+    		sf = factory.newSubfield('i', barcode);
+    		df.addSubfield(sf);
+    		
+    		sf = factory.newSubfield('m', this.getLibrary(topContainer.record));
+    		df.addSubfield(sf);
+    		
+    		r.addVariableField(df);
+        }
+        
+        
+        
+        //write marc object to file
+  		try {
+  			if (!file.exists())
+  				file.createNewFile();
+  			
+  			FileOutputStream o = new FileOutputStream(file);
+  			MarcWriter w = new MarcStreamWriter(o);
+  			
+  			w.write(r);
+  			
+  			w.close();
+  			o.close();
+  		} catch (IOException e) {
+  			e.printStackTrace();
+  		}
     }
 
 }
