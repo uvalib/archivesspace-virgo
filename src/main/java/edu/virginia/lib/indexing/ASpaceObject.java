@@ -255,6 +255,7 @@ public abstract class ASpaceObject {
                 b.add("library", library);
                 b.add("location", library);
                 b.add("call_number", callNumber);
+                b.add("barcode", shortRefId.toUpperCase());
                 b.add("special_collections_location", callNumber);
                 JsonArray defaultContainers = Json.createArrayBuilder().add(b.build()).build();
                 addField(xmlOut, "special_collections_holding_display", defaultContainers.toString());
@@ -382,7 +383,7 @@ public abstract class ASpaceObject {
                     b.add("library", library);
                     b.add("location", library);
                     b.add("call_number", callNumber + " " + container.getString("display_string"));
-
+                    b.add("barcode", getContainerBarcode(container));
                     JsonArray loc = container.getJsonArray("container_locations");
                     for (JsonValue v : loc) {
                         JsonObject l = (JsonObject) v;
@@ -414,6 +415,20 @@ public abstract class ASpaceObject {
             }
         }
 
+    }
+
+    public String getContainerBarcode(JsonObject container) {
+        JsonValue barcode = container.get("barcode");
+        if (barcode != null) {
+            return barcode.toString();
+        } else {
+            Matcher m = Pattern.compile("/repositories/(\\d+)/top_containers/(\\d+)").matcher(container.getString("uri"));
+            if (m.matches()) {
+                return "AS:" + m.group(1) + "C" + m.group(2);
+            } else {
+                return "UNKNOWN";
+            }
+        }
     }
 
     private static void addDigitalImages(final String manifestUrl, final XMLStreamWriter xmlOut, boolean thumbnail, final String dbHost, final String dbUser, final String dbPassword) throws IOException, XMLStreamException, SQLException {
