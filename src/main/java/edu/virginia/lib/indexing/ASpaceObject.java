@@ -292,6 +292,7 @@ public abstract class ASpaceObject {
                 b.add("library", library);
                 b.add("location", library);
                 b.add("call_number", callNumber);
+                b.add("barcode", shortRefId.toUpperCase());
                 b.add("special_collections_location", callNumber);
                 JsonArray defaultContainers = Json.createArrayBuilder().add(b.build()).build();
                 addField(xmlOut, "special_collections_holding_display", defaultContainers.toString());
@@ -420,6 +421,7 @@ public abstract class ASpaceObject {
                     b.add("location", library);
                     b.add("call_number", container.getContainerCallNumber(callNumber));
                     b.add("special_collections_location", container.getCurrentLocation());
+                    b.add("barcode", container.getBarcode());
 
                     scCirclationAspaceContainers.add(b.build());
                 }

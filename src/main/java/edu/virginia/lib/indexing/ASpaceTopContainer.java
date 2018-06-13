@@ -6,6 +6,7 @@ import javax.json.JsonValue;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -64,5 +65,23 @@ public class ASpaceTopContainer extends ASpaceObject {
 
         }
         return null;
+    }
+
+    /**
+     * Gets a barcode if one exists, otherwise returns a compatible identifier
+     * derived from the top container reference id.
+     */
+    public String getBarcode() {
+        JsonValue barcode = record.get("barcode");
+        if (barcode != null) {
+            return barcode.toString();
+        } else {
+            Matcher m = Pattern.compile("/repositories/(\\d+)/top_containers/(\\d+)").matcher(record.getString("uri"));
+            if (m.matches()) {
+                return "AS:" + m.group(1) + "C" + m.group(2);
+            } else {
+                return "UNKNOWN";
+            }
+        }
     }
 }
