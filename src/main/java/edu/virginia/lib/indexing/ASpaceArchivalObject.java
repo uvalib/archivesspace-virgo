@@ -1,6 +1,7 @@
 package edu.virginia.lib.indexing;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Created by md5wz on 11/9/17.
@@ -9,6 +10,12 @@ public class ASpaceArchivalObject extends ASpaceObject {
 
     public ASpaceArchivalObject(ArchivesSpaceClient c, String refId) throws IOException {
         super(c, refId);
+    }
+
+
+    @Override
+    protected Pattern getRefIdPattern() {
+        return Pattern.compile("/?repositories/\\d+/archival_objects/\\d+");
     }
 
     @Override

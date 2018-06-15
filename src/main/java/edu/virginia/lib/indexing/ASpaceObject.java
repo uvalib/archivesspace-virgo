@@ -32,6 +32,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -59,6 +60,9 @@ public abstract class ASpaceObject {
     private JsonObject tree;
 
     public ASpaceObject(ArchivesSpaceClient aspaceClient, final String refId) throws IOException {
+        if (!getRefIdPattern().matcher(refId).matches()) {
+            throw new IllegalArgumentException(refId + " is not an " + this.getClass().getSimpleName());
+        }
         this.c = aspaceClient;
         record = c.resolveReference(refId);
     }
@@ -73,9 +77,30 @@ public abstract class ASpaceObject {
         }
     }
 
+    protected abstract Pattern getRefIdPattern();
+
     public abstract boolean isShadowed() throws IOException;
 
     public abstract boolean isPublished();
+
+    /**
+     * Gets all children (nested components) for this ASpaceObject.  Subclasses that don't/can't
+     * have nested components should return an empty list.
+     */
+    public List<ASpaceArchivalObject> getChildren() throws IOException {
+        List<ASpaceArchivalObject> children = new ArrayList<>();
+        final JsonObject treeObj = getTree();
+        if (treeObj != null) {
+            final JsonArray jsonChildren = tree.getJsonArray("children");
+            if (children != null) {
+                for (JsonValue c : jsonChildren) {
+                    final JsonObject child = (JsonObject) c;
+                    children.add(new ASpaceArchivalObject(this.c, child.getString("record_uri")));
+                }
+            }
+        }
+        return children;
+    }
 
     public int getLockVersion() {
         return record.getInt("lock_version");
@@ -368,7 +393,7 @@ public abstract class ASpaceObject {
      * @param scCirclationAspaceContainers an empty JsonArrayBuilder to contain the resulting circulation information
      * @param manifestUrls the IIIF manifest URLs for digital objects
      */
-    private void parseInstances(JsonArrayBuilder scCirclationAspaceContainers, List<String> manifestUrls, XMLStreamWriter xmlOut, String library, String callNumber) throws IOException, XMLStreamException {
+    protected void parseInstances(JsonArrayBuilder scCirclationAspaceContainers, List<String> manifestUrls, XMLStreamWriter xmlOut, String library, String callNumber) throws IOException, XMLStreamException {
         final JsonValue instances = record.get("instances");
         if (instances != null && instances.getValueType() == JsonValue.ValueType.ARRAY) {
             for (JsonValue i : (JsonArray) instances) {
@@ -387,21 +412,12 @@ public abstract class ASpaceObject {
                     }
                 } else {
                     // container
-                    final JsonObject container = c.resolveReference(instance.getJsonObject("sub_container").getJsonObject("top_container").getString("ref"));
+                    final ASpaceTopContainer container = new ASpaceTopContainer(c, instance.getJsonObject("sub_container").getJsonObject("top_container").getString("ref"));
                     JsonObjectBuilder b = Json.createObjectBuilder();
                     b.add("library", library);
                     b.add("location", library);
-                    b.add("call_number", callNumber + " " + container.getString("display_string"));
-
-                    JsonArray loc = container.getJsonArray("container_locations");
-                    for (JsonValue v : loc) {
-                        JsonObject l = (JsonObject) v;
-                        if (l.getString("status").equals("current")) {
-                            JsonObject location = c.resolveReference(l.getString("ref"));
-                            b.add("special_collections_location", location.getString("title"));
-                        }
-
-                    }
+                    b.add("call_number", container.getContainerCallNumber(callNumber));
+                    b.add("special_collections_location", container.getCurrentLocation());
 
                     scCirclationAspaceContainers.add(b.build());
                 }
@@ -409,18 +425,9 @@ public abstract class ASpaceObject {
         }
 
         // recurse to children
-        final JsonObject treeObj = record.getJsonObject("tree");
-        if (treeObj != null) {
-            final JsonObject tree = c.resolveReference(treeObj.getString("ref"));
-            final JsonArray children = tree.getJsonArray("children");
-            if (children != null) {
-                for (JsonValue c : children) {
-                    final JsonObject child = (JsonObject) c;
-                    final ASpaceObject o = new ASpaceArchivalObject(this.c, child.getString("record_uri"));
-                    if (o.isPublished()) {
-                        o.parseInstances(scCirclationAspaceContainers, manifestUrls, xmlOut, library, callNumber);
-                    }
-                }
+        for (ASpaceArchivalObject child : getChildren()) {
+            if (child.isPublished()) {
+                child.parseInstances(scCirclationAspaceContainers, manifestUrls, xmlOut, library, callNumber);
             }
         }
 
