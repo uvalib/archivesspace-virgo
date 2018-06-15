@@ -2,6 +2,7 @@ package edu.virginia.lib.indexing;
 
 import javax.json.JsonObject;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Created by md5wz on 11/9/17.
@@ -10,6 +11,11 @@ public class ASpaceCollection extends ASpaceObject {
 
     public ASpaceCollection(ArchivesSpaceClient c, String refId) throws IOException {
         super(c, refId);
+    }
+
+    @Override
+    protected Pattern getRefIdPattern() {
+        return Pattern.compile("/?repositories/\\d+/resources/\\d+");
     }
 
     @Override
