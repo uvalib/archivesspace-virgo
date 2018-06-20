@@ -7,6 +7,7 @@ import javax.json.JsonWriter;
 import javax.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,13 +16,17 @@ import java.util.Map;
  */
 public class JsonHelper {
 
-    public static void writeOutJson(JsonStructure o) {
+    public static void writeOutJson(JsonStructure o, OutputStream out) {
         Map<String, Object> properties = new HashMap<>(1);
         properties.put(JsonGenerator.PRETTY_PRINTING, true);
-        JsonWriter w = Json.createWriterFactory(properties).createWriter(System.out);
+        JsonWriter w = Json.createWriterFactory(properties).createWriter(out);
         w.write(o);
     }
 
+    public static void writeOutJson(JsonStructure o) {
+    	writeOutJson(o, System.out);
+    }
+    
     public static JsonObject parseJsonObject(InputStream is) throws IOException {
         try {
             return Json.createReader(is).readObject();
