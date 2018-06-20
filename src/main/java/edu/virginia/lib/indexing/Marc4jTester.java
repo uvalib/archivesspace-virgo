@@ -39,7 +39,7 @@ public class Marc4jTester {
                     p.getProperty("username"),
                     p.getProperty("password"));
 
-            ASpaceCollection rec = new ASpaceCollection(c, "/repositories/7/resources/156");
+            ASpaceCollection rec = new ASpaceCollection(c, "/repositories/3/resources/488");
             //"/repositories/7/resources/156" "/repositories/3/resources/488"
             File file = new File("result.mrc");
             rec.writeCirculationRecord(file);
@@ -48,6 +48,8 @@ public class Marc4jTester {
         }
         System.out.println("All done.");
     }
+    
+    
     
     public static void testMARC() {
         //create marc object

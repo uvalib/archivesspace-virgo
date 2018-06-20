@@ -72,6 +72,8 @@ public abstract class ASpaceObject {
             return new ASpaceAccession(client, refId);
         } else if (refId.contains("/resources/")) {
             return new ASpaceCollection(client, refId);
+        } else if (refId.contains("/top_containers/")) {
+            return new ASpaceTopContainer(client, refId);
         } else {
             throw new RuntimeException("Unable to guess resource type from refID! (" + refId + ")");
         }
@@ -545,13 +547,14 @@ public abstract class ASpaceObject {
      * @throws IOException
      */
     public void writeCirculationRecord(File file) throws IOException {
+        System.out.println(record.getString("uri"));
         //make MARC record with 245 and 590 fields
         MarcFactory factory = MarcFactory.newInstance();
         Record r = factory.newRecord();
         DataField df;
         Subfield sf;
-        JsonHelper.writeOutJson(getTree(), new FileOutputStream("tree.json"));
-        String title = getTree().getString("title"); //record.getString
+
+        String title = record.getString("title");
         char nonIndexChars = '0';
         if (title.startsWith("A "))
             nonIndexChars = '2';
@@ -562,30 +565,27 @@ public abstract class ASpaceObject {
         sf = factory.newSubfield('a', title);
         df.addSubfield(sf);
         r.addVariableField(df);
-        
+
         df = factory.newDataField("590", '1', ' ');
-        sf = factory.newSubfield('a', "From ArchivesSpace: " + getTree().getString("record_uri"));
+        sf = factory.newSubfield('a', "From ArchivesSpace: " + record.getString("uri"));
         df.addSubfield(sf);
         r.addVariableField(df);
         
-        //debug. actual file held
-        JsonHelper.writeOutJson(record, new FileOutputStream("base.json"));
         
         
-        
-        //pull desired resource from ArchivesSpace, get reference for each unique top_container
+        //pull desired resource from ArchivesSpace, get reference for each distinct top_container
         HashSet<String> topContainers = new HashSet<String>();
-        //from children
-        getChildren(getTree(), topContainers);
-        //from self
-        ASpaceObject base = ASpaceObject.parseObject(c, record.getString("uri"));
-        addInstanceRefs(base, topContainers);
+        //get distinct top_containers from self
+        getInstanceRefs(this.record, topContainers);
+        //get distinct top_containers from children
+        if (this.record.get("tree") != null)
+            getTopContainers(getTree(), topContainers);
         
-        
+        System.out.println("Number of top_containers: " + topContainers.size());
         
         //generate a 999 field for each top_container
         for (String s : topContainers) {
-            ASpaceObject topContainer = ASpaceObject.parseObject(c, record.getString("uri"));
+            ASpaceObject topContainer = ASpaceObject.parseObject(c, s);
             
             df = factory.newDataField("999", ' ', ' ');
             
@@ -594,8 +594,11 @@ public abstract class ASpaceObject {
                 barcode = topContainer.record.getString("barcode");
             } else {
                 String uri = topContainer.record.getString("uri");
-                String topContainerNumber = uri.substring(uri.lastIndexOf("/") + 1);
-                String repository = uri.split("/")[2];
+                Pattern pattern = Pattern.compile("/repositories/(\\d+)/(\\w+)/(\\d+)");
+                Matcher matcher = pattern.matcher(uri);
+                matcher.find();
+                String repository = matcher.group(1);
+                String topContainerNumber = matcher.group(3);
                 barcode = "AS:R" + repository + "C" + topContainerNumber;
             }
             sf = factory.newSubfield('i', barcode);
@@ -608,6 +611,7 @@ public abstract class ASpaceObject {
         }
         
         
+        
         //write marc object to file
         try (FileOutputStream o = new FileOutputStream(file)){              
             MarcWriter w = new MarcStreamWriter(o);
@@ -618,27 +622,24 @@ public abstract class ASpaceObject {
         }
     }
     
-    
     /**
      * Populates the incoming HashSet with references to the children of the incoming JsonObject.
      * @param current the JsonObject whose children are to be found
      * @param topContainers the HashSet to be populated with references to children
      * @throws IOException
      */
-    private void getChildren(JsonObject current, HashSet<String> topContainers) throws IOException {
+    private void getTopContainers(JsonObject current, HashSet<String> topContainers) throws IOException {
         if (current.get("children") != null) {
             JsonArray children = current.getJsonArray("children");
             
             for (JsonValue child : children) {
                 JsonObject childObject = (JsonObject)child;
-                if (childObject.getString("node_type").equals("archival_object")) {
-                    ASpaceObject temp = ASpaceObject.parseObject(c, current.getString("record_uri"));
-                    addInstanceRefs(temp, topContainers);
-                }
+                if (childObject.getString("node_type").equals("archival_object"))
+                    getInstanceRefs(c.resolveReference(childObject.getString("record_uri")), topContainers);
                 
                 //recurse if needed
                 if (childObject.get("children") != null)
-                    getChildren(childObject, topContainers);
+                    getTopContainers(childObject, topContainers);
             }
         }
     }
@@ -648,12 +649,13 @@ public abstract class ASpaceObject {
      * @param obj the object whose top_container refs are to be extracted
      * @param topContainers the HashSet to be populated with top_container refs
      */
-    private void addInstanceRefs(ASpaceObject obj, HashSet<String> topContainers) {
-        JsonArray instances = obj.record.getJsonArray("instances");
+    private void getInstanceRefs(JsonObject obj, HashSet<String> topContainers) {
+        JsonArray instances = obj.getJsonArray("instances");
         
         for (JsonValue instance : instances) {
             JsonObject subContainer = ((JsonObject)instance).getJsonObject("sub_container");
-            topContainers.add(subContainer.getJsonObject("top_container").getString("ref"));
+            if (subContainer != null)
+                topContainers.add(subContainer.getJsonObject("top_container").getString("ref"));
         }
     }
 }
