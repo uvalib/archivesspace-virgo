@@ -21,7 +21,7 @@ import static edu.virginia.lib.indexing.helpers.SolrHelper.getSolrXmlFieldValues
 import static edu.virginia.lib.indexing.helpers.XmlHelper.parseXmlFile;
 
 /**
- * Created by md5wz on 1/12/18.
+ * Created by sbc6n on 6/12/18.
  */
 public class CreateMARCRecords {
 
@@ -30,17 +30,14 @@ public class CreateMARCRecords {
         try (FileInputStream fis = new FileInputStream("config.properties")) {
             p.load(fis);
         }
+        
         ArchivesSpaceClient c = new ArchivesSpaceClient(
                 p.getProperty("archivesSpaceUrl"),
                 p.getProperty("username"),
                 p.getProperty("password"));
 
-        final String host = p.getProperty("tracksysDbHost");
-        final String user = p.getProperty("tracksysDbUsername");
-        final String pass = p.getProperty("tracksysDbPassword");
-
-
         int aCtr = 0, rCtr = 0;
+        
         for (String repoId : c.listRepositoryIds()) {
             for (String accessionId : c.listAccessionIds(repoId)) {
                 ASpaceAccession a = new ASpaceAccession(c, accessionId);

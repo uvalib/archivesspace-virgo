@@ -547,7 +547,6 @@ public abstract class ASpaceObject {
      * @throws IOException
      */
     public void writeCirculationRecord(File file) throws IOException {
-        System.out.println(record.getString("uri"));
         //make MARC record with 245 and 590 fields
         MarcFactory factory = MarcFactory.newInstance();
         Record r = factory.newRecord();
@@ -581,7 +580,7 @@ public abstract class ASpaceObject {
         if (this.record.get("tree") != null)
             getTopContainers(getTree(), topContainers);
         
-        System.out.println("Number of top_containers: " + topContainers.size());
+        
         
         //generate a 999 field for each top_container
         for (String s : topContainers) {
@@ -596,10 +595,12 @@ public abstract class ASpaceObject {
                 String uri = topContainer.record.getString("uri");
                 Pattern pattern = Pattern.compile("/repositories/(\\d+)/(\\w+)/(\\d+)");
                 Matcher matcher = pattern.matcher(uri);
-                matcher.find();
-                String repository = matcher.group(1);
-                String topContainerNumber = matcher.group(3);
-                barcode = "AS:R" + repository + "C" + topContainerNumber;
+                if (matcher.find()) {
+                    String repository = matcher.group(1);
+                    String topContainerNumber = matcher.group(3);
+                    barcode = "AS:R" + repository + "C" + topContainerNumber;
+                } else
+                    throw new RuntimeException("Could not identify repository and top_container from " + uri);
             }
             sf = factory.newSubfield('i', barcode);
             df.addSubfield(sf);
