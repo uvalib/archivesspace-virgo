@@ -613,7 +613,7 @@ public abstract class ASpaceObject {
         Subfield sf;
 
 
-        r.addVariableField(factory.newControlField("001", getId()));
+        r.addVariableField(factory.newControlField("001", getIdFromRef(getRecord().getString("uri"))));
 
         String title = getRecord().getString("title");
         char nonIndexChars = '0';
