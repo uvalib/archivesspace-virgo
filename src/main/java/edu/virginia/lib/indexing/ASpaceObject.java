@@ -6,6 +6,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClients;
 import org.marc4j.MarcStreamWriter;
 import org.marc4j.MarcWriter;
+import org.marc4j.MarcXmlWriter;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
@@ -33,9 +34,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,16 +58,45 @@ public abstract class ASpaceObject {
 
     protected ArchivesSpaceClient c;
 
-    protected JsonObject record;
+    protected String refId;
+
+    private JsonObject record;
     
-    private JsonObject tree;
+    protected JsonObject tree;
+
+    protected List<ASpaceTopContainer> containers;
+
+    protected List<ASpaceDigitalObject> digitalObjects;
+
+    private List<ASpaceArchivalObject> children;
 
     public ASpaceObject(ArchivesSpaceClient aspaceClient, final String refId) throws IOException {
         if (!getRefIdPattern().matcher(refId).matches()) {
             throw new IllegalArgumentException(refId + " is not an " + this.getClass().getSimpleName());
         }
         this.c = aspaceClient;
-        record = c.resolveReference(refId);
+        this.refId = refId;
+    }
+
+    protected JsonObject getRecord() {
+        if (record == null) {
+            try {
+                record = c.resolveReference(refId);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return record;
+    }
+
+    /**
+     * Only for special cases where the entire JSON has already been loaded and no reference to the
+     * client is needed.  Any subclass calling this constructor must override every method whose
+     * default implementation expects 'c' t be non-null.
+     */
+    protected ASpaceObject(JsonObject record, JsonObject tree) {
+        this.record = record;
+        this.tree = tree;
     }
 
     public static ASpaceObject parseObject(final ArchivesSpaceClient client, final String refId) throws IOException {
@@ -90,22 +122,79 @@ public abstract class ASpaceObject {
      * have nested components should return an empty list.
      */
     public List<ASpaceArchivalObject> getChildren() throws IOException {
-        List<ASpaceArchivalObject> children = new ArrayList<>();
-        final JsonObject treeObj = getTree();
-        if (treeObj != null) {
-            final JsonArray jsonChildren = tree.getJsonArray("children");
-            if (children != null) {
-                for (JsonValue c : jsonChildren) {
-                    final JsonObject child = (JsonObject) c;
-                    children.add(new ASpaceArchivalObject(this.c, child.getString("record_uri")));
+        if (children == null) {
+            children = new ArrayList<>();
+            final JsonObject treeObj = getTree();
+            if (treeObj != null) {
+                final JsonArray jsonChildren = tree.getJsonArray("children");
+                if (jsonChildren != null) {
+                    for (JsonValue c : jsonChildren) {
+                        final JsonObject child = (JsonObject) c;
+                        children.add(new ASpaceArchivalObject(this.c, child.getString("record_uri"), child));
+                    }
                 }
             }
         }
         return children;
     }
 
+    public List<ASpaceDigitalObject> getDigitalObjects() {
+        parseInstances();
+        return digitalObjects;
+    }
+
+    public List<ASpaceTopContainer> getTopContainers() {
+        parseInstances();
+        return containers;
+    }
+
+    private void parseInstances() {
+        if (containers == null || digitalObjects == null) {
+            containers = new ArrayList<>();
+            digitalObjects = new ArrayList<>();
+            try {
+                Set<String> containers = new HashSet<>();
+                Set<String> dos = new HashSet<>();
+                collectInstanceRefs(containers, dos);
+                for (String ref : containers) {
+                    this.containers.add(new ASpaceTopContainer(c, ref));
+                }
+                for (String ref : dos) {
+                    this.digitalObjects.add(new ASpaceDigitalObject(c, ref));
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Adds all the container refs and digital object refs for this node to the passed
+     * sets and recurses to the published children.
+     */
+    protected void collectInstanceRefs(final Set<String> containerRefs, Set<String> doRefs) throws IOException {
+        final JsonValue instances = getRecord().get("instances");
+        if (instances != null && instances.getValueType() == JsonValue.ValueType.ARRAY) {
+            for (JsonValue i : (JsonArray) instances) {
+                final JsonObject instance = (JsonObject) i;
+                if (!instance.getString("instance_type").equals("digital_object")) {
+                    containerRefs.add(instance.getJsonObject("sub_container").getJsonObject("top_container").getString("ref"));
+                } else {
+                    doRefs.add(instance.getJsonObject("digital_object").getString("ref"));
+                }
+            }
+        }
+
+        // recurse to children
+        for (ASpaceArchivalObject child : getChildren()) {
+            if (child.isPublished()) {
+                child.collectInstanceRefs(containerRefs, doRefs);
+            }
+        }
+    }
+
     public int getLockVersion() {
-        return record.getInt("lock_version");
+        return getRecord().getInt("lock_version");
     }
 
     /**
@@ -115,26 +204,30 @@ public abstract class ASpaceObject {
         return getCallNumber().replace("-", "_").replace("/", "").replace(" ", "").toUpperCase();
     }
 
+    public String getTitle() {
+        return getRecord().getString("title");
+    }
+
     public String getCallNumber() {
         StringBuffer sb = new StringBuffer();
         for (int i = 0; i < 6; i++) {
-            if (record.get("id_" + i) != null) {
+            if (getRecord().get("id_" + i) != null) {
                 if (sb.length() > 0) {
                     sb.append("-");
                 }
-                sb.append(record.getString("id_" + i).trim());
+                sb.append(getRecord().getString("id_" + i).trim());
             }
         }
         return sb.toString();
     }
 
     public File generateSolrAddDoc(final File outputDir, final String dbHost, final String dbUser, final String dbPassword) throws IOException, XMLStreamException, SQLException {
-        final String shortRefId = getIdFromRef(record.getString("uri"));
+        final String shortRefId = getIdFromRef(getRecord().getString("uri"));
         final String callNumber = getCallNumber();
-        final String title = record.getString("title");
+        final String title = getRecord().getString("title");
 
         XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newFactory();
-        final File outputFile = getSolrOutputFile(outputDir, record.getString("uri"));
+        final File outputFile = getSolrOutputFile(outputDir, getRecord().getString("uri"));
         outputFile.getParentFile().mkdirs();
         XMLStreamWriter xmlOut = xmlOutputFactory.createXMLStreamWriter(new FileOutputStream(outputFile));
         xmlOut.writeStartDocument("UTF-8", "1.0");
@@ -166,13 +259,13 @@ public abstract class ASpaceObject {
 
             // TODO: do something with finding aid status
 
-            final String library = getLibrary(record);
+            final String library = getLibrary(getRecord());
             addField(xmlOut, "library_facet", library);
 
             // TODO location_facet
 
             // subjects
-            final JsonValue subjects = record.get("subjects");
+            final JsonValue subjects = getRecord().get("subjects");
             if (subjects != null && subjects.getValueType() == JsonValue.ValueType.ARRAY) {
                 for (JsonValue sub : (JsonArray) subjects) {
                     final String ref = ((JsonObject) sub).getString("ref");
@@ -186,7 +279,7 @@ public abstract class ASpaceObject {
             }
 
             // extents
-            final JsonValue extents = record.get("extents");
+            final JsonValue extents = getRecord().get("extents");
             if (extents != null && extents.getValueType() == JsonValue.ValueType.ARRAY) {
                 for (JsonValue extent : (JsonArray) extents) {
                     JsonObject e = (JsonObject) extent;
@@ -205,7 +298,7 @@ public abstract class ASpaceObject {
 
             // dates
             boolean sortDateSet = false;
-            final JsonValue dates = record.get("dates");
+            final JsonValue dates = getRecord().get("dates");
             if (dates != null && dates.getValueType() == JsonValue.ValueType.ARRAY) {
                 for (JsonValue date : (JsonArray) dates) {
                     try {
@@ -259,7 +352,7 @@ public abstract class ASpaceObject {
             }
 
             // linked agents
-            final JsonValue agents = record.get("linked_agents");
+            final JsonValue agents = getRecord().get("linked_agents");
             if (agents != null && agents.getValueType() == JsonValue.ValueType.ARRAY) {
                 for (JsonValue agentLink : (JsonArray) agents) {
                     final String ref = ((JsonObject) agentLink).getString("ref");
@@ -279,34 +372,37 @@ public abstract class ASpaceObject {
                 }
             }
 
-            // instances
-            final JsonArrayBuilder scCirclationAspaceContainers = Json.createArrayBuilder();
-            final ArrayList<String> iiif = new ArrayList<String>();
-            parseInstances(scCirclationAspaceContainers, iiif, xmlOut, library, callNumber);
-            JsonArray containers = dedupeContainerArray(scCirclationAspaceContainers.build());
-            addField(xmlOut, "feature_facet", "archivesspace");
-            if (containers.size() > 0) {
-                addField(xmlOut, "special_collections_holding_display", containers.toString());
-            } else {
+            // Top Containers
+            JsonArrayBuilder containersBuilder = Json.createArrayBuilder();
+            Collections.sort(getTopContainers(), new Comparator<ASpaceTopContainer>() {
+                @Override
+                public int compare(ASpaceTopContainer o1, ASpaceTopContainer o2) {
+                    return o1.getCallNumber().compareTo(o2.getCallNumber());
+                }
+            });
+            for (ASpaceTopContainer container : getTopContainers()) {
                 JsonObjectBuilder b = Json.createObjectBuilder();
                 b.add("library", library);
-                b.add("location", library);
-                b.add("call_number", callNumber);
-                b.add("barcode", shortRefId.toUpperCase());
-                b.add("special_collections_location", callNumber);
-                JsonArray defaultContainers = Json.createArrayBuilder().add(b.build()).build();
-                addField(xmlOut, "special_collections_holding_display", defaultContainers.toString());
+                b.add("location", container.getLocation());
+                b.add("call_number", container.getContainerCallNumber(getCallNumber()));
+                b.add("barcode", container.getBarcode());
+                b.add("special_collections_location", container.getCurrentLocation());
+                containersBuilder.add(b.build());
             }
+            addField(xmlOut, "special_collections_holding_display", containersBuilder.build().toString());
 
+
+            // Digital Objects
             int manifestsIncluded = 0;
-            if (iiif.size() <= 5) {
-                for (int i = 0; i < iiif.size(); i++) {
-                    final String url = iiif.get(i);
-                    try {
-                        addDigitalImages(url, xmlOut, true, dbHost, dbUser, dbPassword);
-                        manifestsIncluded++;
-                    } catch (IOException ex) {
-                        System.err.println("Unable to fetch manifest: " + url);
+            if (getDigitalObjects().size() <= 5) {
+                for (ASpaceDigitalObject digitalObject : getDigitalObjects()) {
+                    if (digitalObject.getIIIFURL() != null) {
+                        try {
+                            addDigitalImages(digitalObject.getIIIFURL(), xmlOut, manifestsIncluded == 0, dbHost, dbUser, dbPassword);
+                            manifestsIncluded++;
+                        } catch (IOException ex) {
+                            System.err.println("Unable to fetch manifest: " + digitalObject.getIIIFURL());
+                        }
                     }
                 }
             }
@@ -321,7 +417,7 @@ public abstract class ASpaceObject {
             // distinct digital object for which there's an IIIF manifest, rights_wrapper_url, etc.
             //
             // related accessions (use for alternate ids)
-            //final JsonValue accessions = record.get("related_accessions");
+            //final JsonValue accessions = getRecord().get("related_accessions");
             //if (accessions != null && accessions.getValueType() == JsonValue.ValueType.ARRAY) {
             //    for (JsonValue a : (JsonArray) accessions) {
             //        final String ref = ((JsonObject) a).getString("ref");
@@ -331,7 +427,7 @@ public abstract class ASpaceObject {
             //}
 
             // notes (right now, we only include the scope notes)
-            final JsonValue notes = record.get("notes");
+            final JsonValue notes = getRecord().get("notes");
             if (notes != null && notes.getValueType() == JsonValue.ValueType.ARRAY) {
                 for (JsonValue n : (JsonArray) notes) {
                     JsonObject note = (JsonObject) n;
@@ -360,13 +456,13 @@ public abstract class ASpaceObject {
             }
         }
 
-        if (record.get("content_description") != null) {
-            final String noteText = record.getString("content_description");
+        if (getRecord().get("content_description") != null) {
+            final String noteText = getRecord().getString("content_description");
             addField(xmlOut, "note_text", noteText.toString());
             addField(xmlOut, "note_display", noteText.toString());
         }
 
-        addField(xmlOut, "online_url_display", "https://archives.lib.virginia.edu" + record.getString("uri"));
+        addField(xmlOut, "online_url_display", "https://archives.lib.virginia.edu" + getRecord().getString("uri"));
         xmlOut.writeCharacters("  ");
         xmlOut.writeEndElement(); // doc
         xmlOut.writeCharacters("\n");
@@ -390,51 +486,6 @@ public abstract class ASpaceObject {
             }
         }
         return b.build();
-    }
-
-    /**
-     * @param scCirclationAspaceContainers an empty JsonArrayBuilder to contain the resulting circulation information
-     * @param manifestUrls the IIIF manifest URLs for digital objects
-     */
-    protected void parseInstances(JsonArrayBuilder scCirclationAspaceContainers, List<String> manifestUrls, XMLStreamWriter xmlOut, String library, String callNumber) throws IOException, XMLStreamException {
-        final JsonValue instances = record.get("instances");
-        if (instances != null && instances.getValueType() == JsonValue.ValueType.ARRAY) {
-            for (JsonValue i : (JsonArray) instances) {
-                final JsonObject instance = (JsonObject) i;
-                if (instance.getString("instance_type").equals("digital_object")) {
-                    // digital object
-                    final JsonObject digitalObject = c.resolveReference(instance.getJsonObject("digital_object").getString("ref"));
-                    if (digitalObject.getBoolean("publish")) {
-                        // look through file versions for any embeddable formats
-                        for (JsonValue v : digitalObject.getJsonArray("file_versions")) {
-                            JsonObject ver = (JsonObject) v;
-                            if (ver.getBoolean("publish") && ver.getString("use_statement").startsWith("image-service")) {
-                                manifestUrls.add(extractManifestUrl(ver.getString("file_uri")));
-                            }
-                        }
-                    }
-                } else {
-                    // container
-                    final ASpaceTopContainer container = new ASpaceTopContainer(c, instance.getJsonObject("sub_container").getJsonObject("top_container").getString("ref"));
-                    JsonObjectBuilder b = Json.createObjectBuilder();
-                    b.add("library", library);
-                    b.add("location", library);
-                    b.add("call_number", container.getContainerCallNumber(callNumber));
-                    b.add("special_collections_location", container.getCurrentLocation());
-                    b.add("barcode", container.getBarcode());
-
-                    scCirclationAspaceContainers.add(b.build());
-                }
-            }
-        }
-
-        // recurse to children
-        for (ASpaceArchivalObject child : getChildren()) {
-            if (child.isPublished()) {
-                child.parseInstances(scCirclationAspaceContainers, manifestUrls, xmlOut, library, callNumber);
-            }
-        }
-
     }
 
     private static void addDigitalImages(final String manifestUrl, final XMLStreamWriter xmlOut, boolean thumbnail, final String dbHost, final String dbUser, final String dbPassword) throws IOException, XMLStreamException, SQLException {
@@ -533,29 +584,38 @@ public abstract class ASpaceObject {
     }
 
     public void printOutRawData() {
-        JsonHelper.writeOutJson(record);
+        JsonHelper.writeOutJson(getRecord());
     }
 
-    private JsonObject getTree() throws IOException {
-        if (tree == null)
-            return tree = c.resolveReference(record.getJsonObject("tree").getString("ref"));
-        else
+    protected JsonObject getTree() throws IOException {
+        if (tree == null) {
+            JsonObject t = getRecord().getJsonObject("tree");
+            if (t == null) {
+                return null;
+            }
+            return tree = c.resolveReference(t.getString("ref"));
+        } else {
             return tree;
+        }
     }
     
     /**
      * Writes the object's corresponding MARC record into the given file.
-     * @param file the file to be written to
-     * @throws IOException
+     * @param binaryOutputDir the directory to which a binary marc file
+     *                        will be written to
+     * @param xmlOutputDir the directory to which marc XML will be written
      */
-    public void writeCirculationRecord(File file) throws IOException {
+    public void writeCirculationRecord(final File binaryOutputDir, final File xmlOutputDir) throws IOException {
         //make MARC record with 245 and 590 fields
         MarcFactory factory = MarcFactory.newInstance();
         Record r = factory.newRecord();
         DataField df;
         Subfield sf;
 
-        String title = record.getString("title");
+
+        r.addVariableField(factory.newControlField("001", getId()));
+
+        String title = getRecord().getString("title");
         char nonIndexChars = '0';
         if (title.startsWith("A "))
             nonIndexChars = '2';
@@ -568,97 +628,39 @@ public abstract class ASpaceObject {
         r.addVariableField(df);
 
         df = factory.newDataField("590", '1', ' ');
-        sf = factory.newSubfield('a', "From ArchivesSpace: " + record.getString("uri"));
+        sf = factory.newSubfield('a', "From ArchivesSpace: " + getRecord().getString("uri"));
         df.addSubfield(sf);
         r.addVariableField(df);
-        
-        
-        
-        //pull desired resource from ArchivesSpace, get reference for each distinct top_container
-        HashSet<String> topContainers = new HashSet<String>();
-        //get distinct top_containers from self
-        getInstanceRefs(this.record, topContainers);
-        //get distinct top_containers from children
-        if (this.record.get("tree") != null)
-            getTopContainers(getTree(), topContainers);
-        
-        
-        
+
+
         //generate a 999 field for each top_container
-        for (String s : topContainers) {
-            ASpaceObject topContainer = ASpaceObject.parseObject(c, s);
-            
-            df = factory.newDataField("999", ' ', ' ');
-            
-            String barcode;
-            if (topContainer.record.get("barcode") != null) {
-                barcode = topContainer.record.getString("barcode");
-            } else {
-                String uri = topContainer.record.getString("uri");
-                Pattern pattern = Pattern.compile("/repositories/(\\d+)/(\\w+)/(\\d+)");
-                Matcher matcher = pattern.matcher(uri);
-                if (matcher.find()) {
-                    String repository = matcher.group(1);
-                    String topContainerNumber = matcher.group(3);
-                    barcode = "AS:R" + repository + "C" + topContainerNumber;
-                } else
-                    throw new RuntimeException("Could not identify repository and top_container from " + uri);
-            }
-            sf = factory.newSubfield('i', barcode);
-            df.addSubfield(sf);
-            
-            sf = factory.newSubfield('m', this.getLibrary(topContainer.record));
-            df.addSubfield(sf);
-            
+        for (ASpaceTopContainer topContainer : getTopContainers()) {
+            df = factory.newDataField("949", ' ', ' ');
+            df.addSubfield(factory.newSubfield('a', topContainer.getContainerCallNumber(getCallNumber())));
+            df.addSubfield(factory.newSubfield('h', "SC-STACKS-MANUSCRIPT"));
+            df.addSubfield(factory.newSubfield('i', topContainer.getBarcode()));
             r.addVariableField(df);
         }
-        
-        
-        
-        //write marc object to file
-        try (FileOutputStream o = new FileOutputStream(file)){              
-            MarcWriter w = new MarcStreamWriter(o);
-            w.write(r);
-            w.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Populates the incoming HashSet with references to the children of the incoming JsonObject.
-     * @param current the JsonObject whose children are to be found
-     * @param topContainers the HashSet to be populated with references to children
-     * @throws IOException
-     */
-    private void getTopContainers(JsonObject current, HashSet<String> topContainers) throws IOException {
-        if (current.get("children") != null) {
-            JsonArray children = current.getJsonArray("children");
-            
-            for (JsonValue child : children) {
-                JsonObject childObject = (JsonObject)child;
-                if (childObject.getString("node_type").equals("archival_object"))
-                    getInstanceRefs(c.resolveReference(childObject.getString("record_uri")), topContainers);
-                
-                //recurse if needed
-                if (childObject.get("children") != null)
-                    getTopContainers(childObject, topContainers);
+
+        //write marc object to files
+        final String filePrefix = getIdFromRef(getRecord().getString("uri"));
+        if (binaryOutputDir != null) {
+            binaryOutputDir.mkdirs();
+            try (FileOutputStream o = new FileOutputStream(new File(binaryOutputDir, filePrefix + ".mrc"))) {
+                MarcWriter w = new MarcStreamWriter(o);
+                w.write(r);
+                w.close();
             }
         }
-    }
-    
-    /**
-     * Populates the incoming HashSet with any top_container refs in the passed ASpaceObject
-     * @param obj the object whose top_container refs are to be extracted
-     * @param topContainers the HashSet to be populated with top_container refs
-     */
-    private void getInstanceRefs(JsonObject obj, HashSet<String> topContainers) {
-        JsonArray instances = obj.getJsonArray("instances");
-        
-        for (JsonValue instance : instances) {
-            JsonObject subContainer = ((JsonObject)instance).getJsonObject("sub_container");
-            if (subContainer != null)
-                topContainers.add(subContainer.getJsonObject("top_container").getString("ref"));
+        if (xmlOutputDir != null) {
+            xmlOutputDir.mkdirs();
+            try (FileOutputStream o = new FileOutputStream(new File(xmlOutputDir, filePrefix + ".xml"))) {
+                MarcXmlWriter w = new MarcXmlWriter(o, true);
+                w.write(r);
+                w.close();
+            }
         }
+
     }
+
 }

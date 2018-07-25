@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
  */
 public class ASpaceTopContainer extends ASpaceObject {
 
+    private String location;
+
     public ASpaceTopContainer(ArchivesSpaceClient client, String refId) throws IOException {
         super(client, refId);
     }
@@ -40,7 +42,7 @@ public class ASpaceTopContainer extends ASpaceObject {
 
     @Override
     public boolean isPublished() {
-        return record.getBoolean("is_linked_to_published_record");
+        return getRecord().getBoolean("is_linked_to_published_record");
     }
 
     /**
@@ -49,22 +51,26 @@ public class ASpaceTopContainer extends ASpaceObject {
      * container belongs.
      */
     public String getContainerCallNumber(final String owningCallNumber) {
-        return owningCallNumber + " " + record.getString("display_string");
+        return owningCallNumber + " " + getRecord().getString("display_string");
     }
 
     /**
      * Gets the current location.
      */
     public String getCurrentLocation() throws IOException {
-        JsonArray loc = record.getJsonArray("container_locations");
-        for (JsonValue v : loc) {
-            JsonObject l = (JsonObject) v;
-            if (l.getString("status").equals("current")) {
-                return c.resolveReference(l.getString("ref")).getString("title");
+        if (location == null) {
+            JsonArray loc = getRecord().getJsonArray("container_locations");
+            for (JsonValue v : loc) {
+                JsonObject l = (JsonObject) v;
+                if (l.getString("status").equals("current")) {
+                    location = c.resolveReference(l.getString("ref")).getString("title");
+                }
             }
-
+            if (location == null) {
+                return "";
+            }
         }
-        return null;
+        return location;
     }
 
     /**
@@ -72,16 +78,25 @@ public class ASpaceTopContainer extends ASpaceObject {
      * derived from the top container reference id.
      */
     public String getBarcode() {
-        JsonValue barcode = record.get("barcode");
+        JsonValue barcode = getRecord().get("barcode");
         if (barcode != null) {
-            return barcode.toString();
+            return getRecord().getString("barcode");
         } else {
-            Matcher m = Pattern.compile("/repositories/(\\d+)/top_containers/(\\d+)").matcher(record.getString("uri"));
+            Matcher m = Pattern.compile("/repositories/(\\d+)/top_containers/(\\d+)").matcher(getRecord().getString("uri"));
             if (m.matches()) {
                 return "AS:" + m.group(1) + "C" + m.group(2);
             } else {
                 return "UNKNOWN";
             }
+        }
+    }
+
+    public String getLocation() {
+        JsonValue room = getRecord().get("room");
+        if (room == null) {
+            return "STACKS";
+        } else {
+            return room.toString();
         }
     }
 }

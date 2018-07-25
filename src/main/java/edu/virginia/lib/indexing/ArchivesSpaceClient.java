@@ -56,6 +56,7 @@ public class ArchivesSpaceClient {
     }
 
     public JsonObject resolveReference(final String refId) throws IOException {
+        System.out.println("FETCHING " + refId);
         return (JsonObject) makeGetRequest(baseUrl + refId);
     }
 

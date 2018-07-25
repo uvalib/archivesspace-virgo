@@ -34,11 +34,11 @@ public class ASpaceAccession extends ASpaceObject {
     }
 
     public boolean isPublished() {
-        return record.getBoolean("publish");
+        return getRecord().getBoolean("publish") && !getTopContainers().isEmpty();
     }
 
     public boolean hasPublishedCollectionRecord() throws IOException {
-        final JsonArray relatedResources = record.getJsonArray("related_resources");
+        final JsonArray relatedResources = getRecord().getJsonArray("related_resources");
         if (relatedResources.size() == 0) {
             return false;
         }

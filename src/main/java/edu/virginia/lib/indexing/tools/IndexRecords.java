@@ -39,6 +39,8 @@ public class IndexRecords {
         final String pass = p.getProperty("tracksysDbPassword");
 
         final File output = new File(p.getProperty("indexOutputDir"));
+        final File marcOutput = new File(p.getProperty("marcOutputDir"));
+        final File marcXmlOutput = new File(p.getProperty("marcXmlOutputDir"));
         final File logs = new File(p.getProperty("logOutputDir"));
 
         // TODO: generate a report that includes
@@ -65,6 +67,7 @@ public class IndexRecords {
                 //} else {
                     try {
                         a.generateSolrAddDoc(output, host, user, pass);
+                        a.writeCirculationRecord(marcOutput, marcXmlOutput);
                         published.println(accessionId + ": " + a.getId());
                         published.flush();
                     } catch (Throwable t) {
@@ -90,6 +93,7 @@ public class IndexRecords {
                 } else {
                     try {
                         r.generateSolrAddDoc(output, host, user, pass);
+                        r.writeCirculationRecord(marcOutput, marcXmlOutput);
                         published.println(resourceId + ": " + r.getId());
                         published.flush();
                     } catch (Throwable t) {

@@ -1,17 +1,21 @@
 package edu.virginia.lib.indexing;
 
+import javax.json.JsonObject;
+import javax.json.JsonValue;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Created by md5wz on 11/9/17.
- */
 public class ASpaceArchivalObject extends ASpaceObject {
 
-    public ASpaceArchivalObject(ArchivesSpaceClient c, String refId) throws IOException {
-        super(c, refId);
+    public ASpaceArchivalObject(ArchivesSpaceClient aspaceClient, final String refId, final JsonObject tree) throws IOException {
+        super(aspaceClient, refId);
+        if (!tree.getString("node_type").equals("archival_object")) {
+            throw new IllegalArgumentException("Unexpected node_type \"" + tree.getString("node_type") + "\"");
+        }
+        this.tree = tree;
     }
-
 
     @Override
     protected Pattern getRefIdPattern() {
@@ -23,16 +27,8 @@ public class ASpaceArchivalObject extends ASpaceObject {
         throw new UnsupportedOperationException();
     }
 
-    private String assertNotNull(final String value) {
-        if (value == null) {
-            throw new NullPointerException();
-        } else {
-            return value;
-        }
-    }
-
     public boolean isPublished() {
-        return record.getBoolean("publish");
+        return getRecord().getBoolean("publish");
     }
 
     @Override

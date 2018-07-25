@@ -26,7 +26,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
  */
 public class ASpaceAccessionTest {
 
-    private static final String REF = "/repositories/0/accession/0";
+    private static final String REF = "/repositories/0/accessions/0";
     private static final String REPOSITORY_REF = "/repositories/0";
 
     private static final File OUTPUT_DIR = new File("target/test-output/");

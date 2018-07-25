@@ -1,6 +1,8 @@
 solrUrl:http://localhost:8983/solr/virgo/update
 archivesSpaceUrl:http://localhost:8089/
 indexOutputDir:index
+marcOutputDir:catalog/marc
+marcXmlOutputDir:catalog/xml
 logOutputDir:logs
 username:
 password:
