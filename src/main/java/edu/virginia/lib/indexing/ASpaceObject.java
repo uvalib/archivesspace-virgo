@@ -374,13 +374,14 @@ public abstract class ASpaceObject {
 
             // Top Containers
             JsonArrayBuilder containersBuilder = Json.createArrayBuilder();
-            Collections.sort(getTopContainers(), new Comparator<ASpaceTopContainer>() {
+            List<ASpaceTopContainer> containers = new ArrayList<>(getTopContainers());
+            Collections.sort(containers, new Comparator<ASpaceTopContainer>() {
                 @Override
                 public int compare(ASpaceTopContainer o1, ASpaceTopContainer o2) {
-                    return o1.getCallNumber().compareTo(o2.getCallNumber());
+                    return o1.getContainerCallNumber("").compareTo(o2.getContainerCallNumber(""));
                 }
             });
-            for (ASpaceTopContainer container : getTopContainers()) {
+            for (ASpaceTopContainer container : containers) {
                 JsonObjectBuilder b = Json.createObjectBuilder();
                 b.add("library", library);
                 b.add("location", container.getLocation());
@@ -462,7 +463,15 @@ public abstract class ASpaceObject {
             addField(xmlOut, "note_display", noteText.toString());
         }
 
+
+
         addField(xmlOut, "online_url_display", "https://archives.lib.virginia.edu" + getRecord().getString("uri"));
+
+        // A feature_facet is needed for proper display in Virgo.
+        addField(xmlOut, "feature_facet", "suppress_endnote_export");
+        addField(xmlOut, "feature_facet", "suppress_refworks_export");
+        addField(xmlOut, "feature_facet", "suppress_ris_export");
+
         xmlOut.writeCharacters("  ");
         xmlOut.writeEndElement(); // doc
         xmlOut.writeCharacters("\n");
