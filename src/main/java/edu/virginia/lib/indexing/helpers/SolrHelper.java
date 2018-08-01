@@ -6,6 +6,13 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.solr.client.solrj.SolrServer;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.HttpSolrServer;
+import org.apache.solr.client.solrj.impl.XMLResponseParser;
+import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.params.ModifiableSolrParams;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -17,7 +24,9 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +35,49 @@ import java.util.regex.Pattern;
  * Static methods to interact with a Solr server's HTTP API.
  */
 public class SolrHelper {
+
+    public static Iterator<SolrDocument> getRecordsForQuery(String solrUrl, String query) throws SolrServerException {
+        SolrServer solr = new HttpSolrServer(solrUrl);
+        ((HttpSolrServer) solr).setParser(new XMLResponseParser());
+        int start = 0;
+        final ModifiableSolrParams p = new ModifiableSolrParams();
+        p.set("q", new String[] { query });
+        p.set("rows", 100);
+        p.set("start", start);
+        return new Iterator<SolrDocument>() {
+
+            int index = 0;
+            int start = 0;
+            QueryResponse response = null;
+
+            public boolean hasNext() {
+                if (response == null || response.getResults().size() <= index) {
+                    p.set("rows", 100);
+                    p.set("start", start);
+                    try {
+                        response = solr.query(p);
+                        start += response.getResults().size();
+                        index = 0;
+                    } catch (SolrServerException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return response.getResults().size() > index;
+            }
+
+            public SolrDocument next() {
+                if (!hasNext()) {
+                    throw new IllegalStateException();
+                }
+                return response.getResults().get(index ++);
+            }
+
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+
+        };
+    }
 
     public static void postFileToSolr(final String solrUrl, final File solrDoc, boolean commit) throws IOException {
         System.out.println("Writing doc to solr " + solrUrl + "...");

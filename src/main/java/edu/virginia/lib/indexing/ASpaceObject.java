@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -344,9 +345,7 @@ public abstract class ASpaceObject {
                             }
                         }
                     } catch (Exception ex) {
-                        ex.printStackTrace();
-                        printOutRawData();
-                        System.out.println("SKIPPING DATE FOR " + shortRefId);
+                        throw new RuntimeException(ex);
                     }
                 }
             }
@@ -596,6 +595,10 @@ public abstract class ASpaceObject {
         JsonHelper.writeOutJson(getRecord());
     }
 
+    public void printOutRawData(final OutputStream os) {
+        JsonHelper.writeOutJson(getRecord(), os);
+    }
+
     protected JsonObject getTree() throws IOException {
         if (tree == null) {
             JsonObject t = getRecord().getJsonObject("tree");
@@ -607,14 +610,31 @@ public abstract class ASpaceObject {
             return tree;
         }
     }
-    
+
     /**
      * Writes the object's corresponding MARC record into the given file.
-     * @param binaryOutputDir the directory to which a binary marc file
-     *                        will be written to
-     * @param xmlOutputDir the directory to which marc XML will be written
      */
-    public void writeCirculationRecord(final File binaryOutputDir, final File xmlOutputDir) throws IOException {
+    public void writeMarcCirculationRecord(final File file, final boolean xml) throws IOException {
+
+        if (xml) {
+            try (FileOutputStream o = new FileOutputStream(file)) {
+                MarcXmlWriter w = new MarcXmlWriter(o, true);
+                writeCirculationRecord(w, null);
+                w.close();
+            }
+        } else {
+            try (FileOutputStream o = new FileOutputStream(file)) {
+                MarcStreamWriter w = new MarcStreamWriter(o);
+                writeCirculationRecord(null, w);
+                w.close();
+            }
+        }
+    }
+
+    /**
+     * Writes the object's corresponding MARC record to the given streams.
+     */
+    public void writeCirculationRecord(final MarcXmlWriter xmlWriter, final MarcStreamWriter marcWriter) throws IOException {
         //make MARC record with 245 and 590 fields
         MarcFactory factory = MarcFactory.newInstance();
         Record r = factory.newRecord();
@@ -651,25 +671,12 @@ public abstract class ASpaceObject {
             r.addVariableField(df);
         }
 
-        //write marc object to files
-        final String filePrefix = getIdFromRef(getRecord().getString("uri"));
-        if (binaryOutputDir != null) {
-            binaryOutputDir.mkdirs();
-            try (FileOutputStream o = new FileOutputStream(new File(binaryOutputDir, filePrefix + ".mrc"))) {
-                MarcWriter w = new MarcStreamWriter(o);
-                w.write(r);
-                w.close();
-            }
+        if (marcWriter != null) {
+            marcWriter.write(r);
         }
-        if (xmlOutputDir != null) {
-            xmlOutputDir.mkdirs();
-            try (FileOutputStream o = new FileOutputStream(new File(xmlOutputDir, filePrefix + ".xml"))) {
-                MarcXmlWriter w = new MarcXmlWriter(o, true);
-                w.write(r);
-                w.close();
-            }
+        if (xmlWriter != null) {
+            xmlWriter.write(r);
         }
-
     }
 
 }

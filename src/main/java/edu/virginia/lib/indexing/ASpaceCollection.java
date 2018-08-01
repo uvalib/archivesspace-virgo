@@ -9,13 +9,24 @@ import java.util.regex.Pattern;
  */
 public class ASpaceCollection extends ASpaceObject {
 
+    private static Pattern ID_PATTERN = Pattern.compile("/?repositories/\\d+/resources/\\d+");
+
+    /**
+     * Checks whether a passed id is in the format expected for an ID.  This does not
+     * guarantee that it's a resource record identifier, but only that it could be one,
+     * and couldn't be another type.
+     */
+    public static boolean isCorrectIdFormat(final String id) {
+        return ID_PATTERN.matcher(id).matches();
+    }
+
     public ASpaceCollection(ArchivesSpaceClient c, String refId) throws IOException {
         super(c, refId);
     }
 
     @Override
     protected Pattern getRefIdPattern() {
-        return Pattern.compile("/?repositories/\\d+/resources/\\d+");
+        return ID_PATTERN;
     }
 
     @Override

@@ -1,10 +1,13 @@
 package edu.virginia.lib.indexing.tools;
 
-import edu.virginia.lib.indexing.ASpaceAccession;
 import edu.virginia.lib.indexing.ASpaceCollection;
+import edu.virginia.lib.indexing.ASpaceObject;
 import edu.virginia.lib.indexing.ArchivesSpaceClient;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
+import edu.virginia.lib.indexing.helpers.SolrHelper;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.common.SolrDocument;
+import org.marc4j.MarcStreamWriter;
+import org.marc4j.MarcXmlWriter;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,12 +15,13 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
-
-import static edu.virginia.lib.indexing.helpers.SolrHelper.getSolrOutputFile;
-import static edu.virginia.lib.indexing.helpers.SolrHelper.getSolrXmlFieldValues;
-import static edu.virginia.lib.indexing.helpers.XmlHelper.parseXmlFile;
+import java.util.Set;
 
 /**
  * Created by md5wz on 1/12/18.
@@ -38,76 +42,126 @@ public class IndexRecords {
         final String user = p.getProperty("tracksysDbUsername");
         final String pass = p.getProperty("tracksysDbPassword");
 
+        final int interval = Integer.valueOf(p.getProperty("interval"));
+
         final File output = new File(p.getProperty("indexOutputDir"));
         final File marcOutput = new File(p.getProperty("marcOutputDir"));
         final File marcXmlOutput = new File(p.getProperty("marcXmlOutputDir"));
         final File logs = new File(p.getProperty("logOutputDir"));
 
-        // TODO: generate a report that includes
-        // items updated
-        // items published
-        // items not published and why
-        // items in error
-        // processing time
+        final String solrUrl = p.getProperty("archivesSpaceSolrUrl");
+
         final File report = new File(logs, new SimpleDateFormat("yyyy-MM-dd-").format(new Date()) + "updated.txt");
         final PrintWriter published = new PrintWriter(new OutputStreamWriter(new FileOutputStream(report, true)));
 
         final long start = System.currentTimeMillis();
-        published.write("Started at " + new Date());
+        published.println("Started at " + new Date());
 
-        for (String repoId : c.listRepositoryIds()) {
-            for (String accessionId : c.listAccessionIds(repoId)) {
-                ASpaceAccession a = new ASpaceAccession(c, accessionId);
-                final File f = getSolrOutputFile(output, accessionId);
-                // TODO: it's important to reindex the accession record when the collection record changes
-                //       reindexing all the accession records every day is the easy way to accomplish this
-                //       but should be reconsidered later
-                //if (f.exists() && getSolrXmlFieldValues("aspace_version_facet", parseXmlFile(f)).contains(String.valueOf(a.getLockVersion()))) {
-                //    published.println(accessionId + ": skipped because lock number hasn't changed since last index");
-                //} else {
-                    try {
-                        a.generateSolrAddDoc(output, host, user, pass);
-                        a.writeCirculationRecord(marcOutput, marcXmlOutput);
-                        published.println(accessionId + ": " + a.getId());
-                        published.flush();
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                        a.printOutRawData();
-                        published.println(accessionId + ": skipped due to runtime error " + t.toString());
-                    }
-                //}
-            }
-            for (String resourceId : c.listResourceIds(repoId)) {
-                final File f = getSolrOutputFile(output, resourceId);
-                ASpaceCollection r = new ASpaceCollection(c, resourceId);
-                Document solrDoc = null;
-                if (f.exists()) {
-                    try {
-                        solrDoc = parseXmlFile(f);
-                    } catch (SAXException e) {
-                        System.out.println("Unable to parse existing SOLR document, overwriting! (" + f.getName() + ")");
-                    }
-                }
-                if (solrDoc != null && getSolrXmlFieldValues("aspace_version_facet", solrDoc).contains(String.valueOf(r.getLockVersion()))) {
-                    published.println(resourceId + ": skipped because lock number hasn't changed since last index");
-                } else {
-                    try {
-                        r.generateSolrAddDoc(output, host, user, pass);
-                        r.writeCirculationRecord(marcOutput, marcXmlOutput);
-                        published.println(resourceId + ": " + r.getId());
-                        published.flush();
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                        r.printOutRawData();
-                        published.println(resourceId + ": skipped due to runtime error " + t.toString());
-                    }
-                }
-            }
-
+        int reindexed = 0;
+        List<String> errorRefs = new ArrayList<>();
+        final Set<String> refsToUpdate = new HashSet<>();
+        List<String> repos = findUpdatedRepositories(solrUrl, interval);
+        for (String repoRef : repos) {
+            refsToUpdate.addAll(c.listAccessionIds(repoRef));
+            refsToUpdate.addAll(c.listResourceIds(repoRef));
+            published.println(refsToUpdate.size() + " contained accessions and resources will be updated because repository " + repoRef + " was updated.");
         }
+        final Set<String> updatedRefs = findUpdatedRecordsToReindex(solrUrl, interval);
+        published.println(updatedRefs.size() + " accessions and resources had individual updates");
+        refsToUpdate.addAll(updatedRefs);
+        published.println(refsToUpdate.size() + " records to regenerate.");
+        published.flush();
+
+        final File marcRecords = new File(marcOutput, new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + "-updates.mrc");
+        MarcStreamWriter marcStream = new MarcStreamWriter(new FileOutputStream(marcRecords));
+        final File marcXmlRecords = new File(marcXmlOutput, new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + "-updates.xml");
+        MarcXmlWriter xmlWriter = new MarcXmlWriter(new FileOutputStream(marcXmlRecords));
+        for (String ref : updatedRefs) {
+            try {
+                ASpaceObject o = ASpaceObject.parseObject(c, ref);
+                o.generateSolrAddDoc(output, host, user, pass);
+                if (isSpecialCollections(ref)) {
+                    o.writeCirculationRecord(xmlWriter, marcStream);
+                }
+                published.println(ref + ": " + o.getId());
+                published.flush();
+                reindexed ++;
+            } catch (Throwable t) {
+                t.printStackTrace(published);
+                published.println(ref + ": skipped due to runtime error " + t.toString());
+                errorRefs.add(ref);
+            }
+        }
+        marcStream.close();
+        xmlWriter.close();
         published.println("Completed at " + new Date());
-        published.println(((System.currentTimeMillis() - start) / 1000 / 60) + " minutes elapsed");
+        final long elapsedSeconds = ((System.currentTimeMillis() - start) / 1000);
+        published.println((elapsedSeconds / 60) + " minutes elapsed");
         published.close();
+
+        if (errorRefs.isEmpty()) {
+            System.out.println("Updated index and marc records for the " + reindexed + " resources/accessions in ArchivesSpace that changed in the last " + interval + " days.");
+        } else {
+            System.err.println(errorRefs.size() + " records resulted in errors, no records updated!");
+            System.exit(1);
+        }
+    }
+
+    private static boolean isSpecialCollections(String ref) {
+        return ref.startsWith("/repositories/3");
+    }
+
+    final static String TYPES = "types";
+
+    private static String getQuery(final int daysAgo) {
+        return "user_mtime:[NOW-" + daysAgo + "DAY TO NOW]";
+    }
+
+    // http://archivesspace01.lib.virginia.edu:8090/collection1/select?q=user_mtime:[NOW-100DAY%20TO%20NOW]&wt=xml&indent=true&facet=true&facet.field=types
+    // &fl=id,types,ancestors,linked_instance_uris,related_accession_uris,collection_uri_u_sstr
+    private static Set<String> findUpdatedRecordsToReindex(final String solrUrl, int daysAgo) throws SolrServerException {
+        final Set<String> refIds = new HashSet<>();
+        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(daysAgo));
+        while (updated.hasNext()) {
+            SolrDocument d = updated.next();
+            if (hasFieldValue(d, TYPES, "resource")) {
+                // all directly updated resource records
+                refIds.add((String) d.getFirstValue("id"));
+            } else if (hasFieldValue(d, TYPES, "archival_object")) {
+                // plus all resource records that are ancestors of updated archival objects
+                for (Object a : d.getFieldValues("ancestors")) {
+                    String ancestor = (String) a;
+                    if (ASpaceCollection.isCorrectIdFormat(ancestor)) {
+                        refIds.add(ancestor);
+                    }
+                }
+            } else if (hasFieldValue(d, TYPES, "top_container")) {
+                // plus all records that may have an updated or added top_container (this may include accession records)
+                for (Object ref : d.getFieldValues("collection_uri_u_sstr")) {
+                    refIds.add((String) ref);
+                }
+            }
+        }
+        return refIds;
+    }
+
+    private static List<String> findUpdatedRepositories(final String solrUrl, int daysAgo) throws SolrServerException {
+        final List<String> refIds = new ArrayList<>();
+        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(daysAgo) + " AND " + TYPES + ":repository");
+        while (updated.hasNext()) {
+            SolrDocument d = updated.next();
+            refIds.add((String) d.getFirstValue("id"));
+        }
+        return refIds;
+    }
+
+    private static boolean hasFieldValue(SolrDocument d, final String field, final String value) {
+        for (Object val : d.getFieldValues(field)) {
+            if (val instanceof String && val.equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

@@ -7,6 +7,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -18,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ArchivesSpaceClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ArchivesSpaceClient.class);
 
     private String baseUrl;
 
@@ -56,7 +60,7 @@ public class ArchivesSpaceClient {
     }
 
     public JsonObject resolveReference(final String refId) throws IOException {
-        System.out.println("FETCHING " + refId);
+        LOGGER.debug("FETCHING " + refId);
         return (JsonObject) makeGetRequest(baseUrl + refId);
     }
 
