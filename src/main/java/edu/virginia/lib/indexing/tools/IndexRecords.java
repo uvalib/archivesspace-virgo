@@ -16,6 +16,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -137,8 +138,11 @@ public class IndexRecords {
                 }
             } else if (hasFieldValue(d, TYPES, "top_container")) {
                 // plus all records that may have an updated or added top_container (this may include accession records)
-                for (Object ref : d.getFieldValues("collection_uri_u_sstr")) {
-                    refIds.add((String) ref);
+                final Collection<Object> values = d.getFieldValues("collection_uri_u_sstr");
+                if (values != null) {
+                    for (Object ref : values) {
+                        refIds.add((String) ref);
+                    }
                 }
             }
         }
