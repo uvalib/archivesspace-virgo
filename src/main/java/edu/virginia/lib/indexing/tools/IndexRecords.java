@@ -103,7 +103,7 @@ public class IndexRecords {
         if (errorRefs.isEmpty()) {
             System.out.println("Updated index and marc records for the " + reindexed + " resources/accessions in ArchivesSpace that changed in the last " + interval + " days.");
         } else {
-            System.err.println(errorRefs.size() + " records resulted in errors, no records updated!");
+            System.err.println(errorRefs.size() + " records resulted in errors, " + reindexed + " other index/marc records updated in responses to changes in the last " + interval + " days.");
             System.exit(1);
         }
     }
