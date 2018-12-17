@@ -251,6 +251,7 @@ public abstract class ASpaceObject {
         addField(xmlOut, "main_title_display", title);
         addField(xmlOut, "title_text", title);
         addField(xmlOut, "source_facet", "ArchivesSpace");
+        addField(xmlOut, "format_facet", "Manuscript/Archive");
         final boolean shadowed = isShadowed();
         addField(xmlOut, "shadowed_location_facet", shadowed ? "HIDDEN" : "VISIBLE");
         if (!shadowed) {
