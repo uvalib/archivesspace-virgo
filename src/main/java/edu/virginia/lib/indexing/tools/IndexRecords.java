@@ -77,7 +77,7 @@ public class IndexRecords {
         MarcStreamWriter marcStream = new MarcStreamWriter(new FileOutputStream(marcRecords));
         final File marcXmlRecords = new File(marcXmlOutput, new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + "-updates.xml");
         MarcXmlWriter xmlWriter = new MarcXmlWriter(new FileOutputStream(marcXmlRecords));
-        for (String ref : updatedRefs) {
+        for (String ref : refsToUpdate) {
             try {
                 ASpaceObject o = ASpaceObject.parseObject(c, ref);
                 o.generateSolrAddDoc(output, host, user, pass);
