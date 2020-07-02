@@ -31,6 +31,7 @@
     <xsl:template match="doc">
         <doc>
             <field name="pool_f">archival</field>
+            <field name="circulating_f">false</field>
             <field name="record_date_stored">
                 <xsl:value-of select="current-dateTime()"/>
             </field>
