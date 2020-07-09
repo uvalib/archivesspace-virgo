@@ -20,7 +20,7 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>4.5.2</version>
+      <version>4.5.8</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
@@ -77,6 +77,13 @@
       <version>2.13.0</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-s3</artifactId>
+      <version>1.11.813</version>
+    </dependency>
+
 
     <dependency>
     	<groupId>org.marc4j</groupId>
