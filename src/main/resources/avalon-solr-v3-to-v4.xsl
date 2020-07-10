@@ -44,7 +44,13 @@
             </field>
             <xsl:variable name="audio" select="field[@name = 'format_facet'][text() = 'Streaming Audio']"/>
             <xsl:variable name="video" select="field[@name = 'format_facet'][text() = 'Online Video']"/>
-            <field name="url_str_stored">https://avalon.lib.virginia.edu/media_objects/<xsl:value-of select="field[@name = 'id']/text()" /></field>
+            <xsl:variable name="solrId" select="field[@name = 'id']/text()" />
+            <xsl:variable name="avalonId">
+                <xsl:variable name="idsAreTheSame" select="contains(base-uri(), translate($solrId, ':', '_'))"/>
+                <xsl:if test="$idsAreTheSame"><xsl:value-of select="$solrId"/></xsl:if>
+                <xsl:if test="not($idsAreTheSame)"><xsl:value-of select="substring($solrId, 8)"/></xsl:if>
+            </xsl:variable>
+            <field name="url_str_stored">https://avalon.lib.virginia.edu/media_objects/<xsl:value-of select="$avalonId"/></field>
             <field name="data_source_str_stored">avalon</field>
             <xsl:if test="$audio and not($video)">
                 <field name="url_label_str_stored">Listen Online</field>
