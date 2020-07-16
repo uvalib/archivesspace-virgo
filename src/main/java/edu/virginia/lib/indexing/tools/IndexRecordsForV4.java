@@ -26,7 +26,7 @@ public class IndexRecordsForV4 {
     public static void main(String [] args) throws Exception {
         Date now = new Date();
         Properties p = new Properties();
-        try (FileInputStream fis = new FileInputStream("config.properties")) {
+        try (FileInputStream fis = new FileInputStream(args.length == 0 ? "config.properties" : args[0])) {
             p.load(fis);
         }
        
