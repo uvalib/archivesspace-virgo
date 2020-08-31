@@ -87,7 +87,10 @@
             </field>
         </xsl:if>
         <xsl:if test="not($mapEntry)">
-            <xsl:comment>Dropped unmapped V3 "<xsl:value-of select="$v3FieldName"/>" field.</xsl:comment>
+            <field name="avalon_tsearch">
+                <xsl:apply-templates select="node()" mode="copy"/>
+            </field>
+            <xsl:comment>Unmapped V3 "<xsl:value-of select="$v3FieldName"/>" field will only be text-searchable.</xsl:comment>
         </xsl:if>
         
     </xsl:template>
