@@ -54,7 +54,6 @@
         <map v3="rcd_display" v4="author_tsearchf_stored" suffix=" (recordist)" />
         <map v3="sng_display" v4="author_tsearchf_stored" suffix=" (singer)" />
         <map v3="spk_display" v4="author_tsearchf_stored" suffix=" (speaker)" />
-        <map v3="geographic_subject_display" v4="" />
     </xsl:variable>
     
     <xsl:output method="xml" indent="yes" omit-xml-declaration="yes"/>
