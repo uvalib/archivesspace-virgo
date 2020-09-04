@@ -8,7 +8,7 @@
         <map v3="part_pid_display" v4="identifier_e_stored" />
         <map v3="shadowed_location_facet" v4="shadowed_location_f"/>
         <map v3="title_display" v4="title_tsearch_stored"/>
-        <map v3="author_facet" v4="author_tsearchf_stored"/>
+        <!--<map v3="author_facet" v4="author_tsearchf_stored"/> I believe the role-based fields capture this-->
         <map v3="author_added_entry_text" v4="author_added_entry_tsearchf_stored"/>
         <map v3="thumbnail_url_display" v4="thumbnail_url_stored" />
         <map v3="source_facet" v4="source_f_stored"/>
@@ -24,6 +24,37 @@
         <map v3="publisher_display" v4="publisher_name_tsearch_stored" />
         <map v3="digital_collection_facet" v4="collection_f" />
         <map v3="language_facet" v4="language_f" />
+        
+        <map v3="abstract_display" v4="notes" />
+        <map v3="toc_display" v4="title_notes_a" />
+        <map v3="act_display" v4="author_tsearchf_stored" suffix=" (actor)"/>
+        <map v3="arr_display" v4="author_tsearchf_stored" suffix=" (arranger)" />
+        <map v3="aus_display" v4="author_tsearchf_stored" suffix=" (screenwriter)" />
+        <map v3="aut_display" v4="author_tsearchf_stored" />
+        <map v3="cmp_display" v4="author_tsearchf_stored" suffix=" (composer)" />
+        <map v3="cnd_display" v4="author_tsearchf_stored" suffix=" (conductor)" />
+        <map v3="cng_display" v4="author_tsearchf_stored" suffix=" (cinematographer)" />
+        <map v3="cre_display" v4="author_tsearchf_stored" suffix=" (creator)" />
+        <map v3="ctb_display" v4="author_tsearchf_stored" suffix=" (contributor)"/>
+        <map v3="drt_display" v4="author_director_a"/>
+        <map v3="dst_display" v4="author_tsearchf_stored" suffix=" (distributor)" />
+        <map v3="edt_display" v4="author_tsearchf_stored" suffix=" (editor)" />
+        <map v3="hst_display" v4="author_tsearchf_stored" suffix=" (host)" />
+        <map v3="itr_display" v4="author_tsearchf_stored" suffix=" (instrumentalist)" />
+        <map v3="ive_display" v4="author_tsearchf_stored" suffix=" (interviewer)" />
+        <map v3="mod_display" v4="author_tsearchf_stored" suffix=" (moderator)" />
+        <map v3="msd_display" v4="author_tsearchf_stored" suffix=" (musical director)" />
+        <map v3="mus_display" v4="author_tsearchf_stored" suffix=" (musician)" />
+        <map v3="nrt_display" v4="author_tsearchf_stored" suffix=" (narrator)" />
+        <map v3="pan_display" v4="author_tsearchf_stored" suffix=" (panelist)" />
+        <map v3="pre_display" v4="author_tsearchf_stored" suffix=" (presenter)" />
+        <map v3="prf_display" v4="performers_a" />
+        <map v3="prn_display" v4="author_tsearchf_stored" suffix=" (production company)" />
+        <map v3="pro_display" v4="author_tsearchf_stored" suffix=" (producer)" />
+        <map v3="rcd_display" v4="author_tsearchf_stored" suffix=" (recordist)" />
+        <map v3="sng_display" v4="author_tsearchf_stored" suffix=" (singer)" />
+        <map v3="spk_display" v4="author_tsearchf_stored" suffix=" (speaker)" />
+        <map v3="geographic_subject_display" v4="" />
     </xsl:variable>
     
     <xsl:output method="xml" indent="yes" omit-xml-declaration="yes"/>
@@ -84,6 +115,9 @@
             <field>
                 <xsl:attribute name="name" select="$mapEntry/@v4"/>
                 <xsl:apply-templates select="node()" mode="copy"/>
+                <xsl:if test="$mapEntry/@suffix">
+                    <xsl:value-of select="$mapEntry/@suffix" />
+                </xsl:if>
             </field>
         </xsl:if>
         <xsl:if test="not($mapEntry)">
