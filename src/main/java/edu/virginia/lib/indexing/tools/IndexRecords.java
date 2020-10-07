@@ -128,6 +128,13 @@ public class IndexRecords {
             if (hasFieldValue(d, TYPES, "resource")) {
                 // all directly updated resource records
                 refIds.add((String) d.getFirstValue("id"));
+                // add all affected related accessions (they might have to be hidden or something)
+                final Collection<Object> values = d.getFieldValues("related_accession_uris");
+                if (values != null) {
+                    for (Object ref : values) {
+                        refIds.add((String) ref);
+                    }
+                }
             } else if (hasFieldValue(d, TYPES, "archival_object")) {
                 // plus all resource records that are ancestors of updated archival objects
                 for (Object a : d.getFieldValues("ancestors")) {
