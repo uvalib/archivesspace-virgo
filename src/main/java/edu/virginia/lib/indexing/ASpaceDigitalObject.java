@@ -46,8 +46,13 @@ public class ASpaceDigitalObject extends ASpaceObject {
     public String getIIIFURL() {
         for (JsonValue v : getRecord().getJsonArray("file_versions")) {
             JsonObject ver = (JsonObject) v;
-            if (ver.getBoolean("publish") && ver.getString("use_statement").startsWith("image-service")) {
-                 return extractManifestUrl(ver.getString("file_uri"));
+            try {
+                if (ver.getBoolean("publish") && ver.getString("use_statement").startsWith("image-service")) {
+                    return extractManifestUrl(ver.getString("file_uri"));
+                }
+            } catch (Throwable t) {
+                System.out.println("Skipping digital content, likely because no use_statement.");
+                return null;
             }
         }
         return null;
