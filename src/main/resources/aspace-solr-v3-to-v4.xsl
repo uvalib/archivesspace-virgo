@@ -11,6 +11,7 @@
         <map v3="source_facet" v4="source_f_stored"/>
         <map v3="format_facet" v4="format_f_stored"/>
         <map v3="library_facet" v4="library_f_stored"/>
+        <map v3="library_facet" v4="source_f_stored"/>
         <map v3="subject_facet" v4="subject_tsearchf_stored"/>
         <map v3="extent_display" v4="extent_tsearch_stored"/>
         <map v3="date_display" v4="published_display_tsearch_stored"/>
@@ -77,14 +78,17 @@
     </xsl:template>
 
     <xsl:template match="field">
+        <xsl:variable name="value">
+          <xsl:apply-templates select="node()" mode="copy" />
+        </xsl:variable>
         <xsl:variable name="v3FieldName" select="@name"/>
-        <xsl:variable name="mapEntry" select="$fieldMap/map[@v3 = $v3FieldName]"/>
-        <xsl:if test="$mapEntry">
+        <xsl:for-each select="$fieldMap/map[@v3 = $v3FieldName]">
             <field>
-                <xsl:attribute name="name" select="$mapEntry/@v4"/>
-                <xsl:apply-templates select="node()" mode="copy"/>
+                <xsl:attribute name="name" select="@v4"/>
+                <xsl:value-of select="$value" />
             </field>
-        </xsl:if>
+        </xsl:for-each>
+        <xsl:variable name="mapEntry" select="$fieldMap/map[@v3 = $v3FieldName]"/>
         <xsl:if test="not($mapEntry)">
             <xsl:comment>Dropped unmapped V3 "<xsl:value-of select="$v3FieldName"/>" field.</xsl:comment>
         </xsl:if>

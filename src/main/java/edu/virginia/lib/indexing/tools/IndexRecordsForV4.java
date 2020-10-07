@@ -23,7 +23,7 @@ import com.amazonaws.services.s3.transfer.Upload;
 
 public class IndexRecordsForV4 {
 
-    public static void main(String [] args) throws Exception {
+    public static int main(String [] args) throws Exception {
         Date now = new Date();
         Properties p = new Properties();
         try (FileInputStream fis = new FileInputStream(args.length == 0 ? "config.properties" : args[0])) {
@@ -94,9 +94,10 @@ public class IndexRecordsForV4 {
         } catch (Throwable t) {
             t.printStackTrace(pw);
             System.err.println("Error transmitting index updates to S3!");
-            System.exit(1);
+            return 1;
         }
         System.out.println(aspaceSize + " aspace records sent to S3, " + avalonSize + " avalon records sent to S3.");
+        return 0;
     }
 
     private static void transferFileToS3(PrintWriter pw, final File file, final String bucket, final String path) throws Exception {
