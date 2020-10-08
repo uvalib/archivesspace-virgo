@@ -121,7 +121,7 @@ public class IndexRecordsForV4 {
         
     }
     
-    private String getV4DocFromV3Doc(final File v3) throws Exception {
+    public String getV4DocFromV3Doc(final File v3) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamSource s = new StreamSource(new FileInputStream(v3));
         try {

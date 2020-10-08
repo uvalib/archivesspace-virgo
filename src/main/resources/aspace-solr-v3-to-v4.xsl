@@ -10,8 +10,10 @@
         <map v3="title_text" v4="full_title_tsearchf_stored"/>
         <map v3="source_facet" v4="source_f_stored"/>
         <map v3="format_facet" v4="format_f_stored"/>
+        <!-- These are handled by a special template
         <map v3="library_facet" v4="library_f_stored"/>
         <map v3="library_facet" v4="source_f_stored"/>
+        -->
         <map v3="subject_facet" v4="subject_tsearchf_stored"/>
         <map v3="extent_display" v4="extent_tsearch_stored"/>
         <map v3="date_display" v4="published_display_tsearch_stored"/>
@@ -47,7 +49,6 @@
         </doc>
     </xsl:template>
 
-
     <xsl:template match="field[@name = 'call_number_facet']">
         <field name="call_number_tsearch_stored">
             <xsl:value-of select="translate(text(), 'ms', 'MS')"/>
@@ -76,6 +77,18 @@
         </field>
         <field name="url_label_supp_a">GUIDE TO THE COLLECTION AVAILABLE ONLINE</field>
     </xsl:template>
+
+    <xsl:template match="field[@name = 'library_facet']">
+        <field name="library_f_stored">
+            <xsl:value-of select="text()"/>
+        </field>
+        <xsl:if test="text() = 'Special Collections'">
+          <field name="source_f_stored">
+            <xsl:value-of select="text()"/>
+          </field>
+        </xsl:if>
+    </xsl:template>
+
 
     <xsl:template match="field">
         <xsl:variable name="value">

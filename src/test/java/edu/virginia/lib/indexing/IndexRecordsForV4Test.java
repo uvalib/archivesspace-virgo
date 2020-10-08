@@ -1,6 +1,9 @@
 package edu.virginia.lib.indexing;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
 
 import org.junit.Test;
 
@@ -8,10 +11,16 @@ import edu.virginia.lib.indexing.tools.IndexRecordsForV4;
 
 public class IndexRecordsForV4Test {
 
-    //@Test disabled because it produces temp files and may send stuff to s3... but useful for development and
-    // could later be updated for a dry-run mode
-    public void testXslt() throws Exception {
-        //assertEquals("Program didn't return 0.", 0, IndexRecordsForV4.main(new String[] { "src/test/resources/test-config.properties"}));   
+    @Test
+    public void testSCXslt() throws Exception {
+        final String doc = new IndexRecordsForV4().getV4DocFromV3Doc(new File("src/test/resources/v3index/as:3r754.xml"));
+        assertTrue("Index document must contain source_f_stored for Special Collections.", doc.contains("<field name=\"source_f_stored\">Special Collections</field>"));
+    }
+    
+    @Test
+    public void testLawXslt() throws Exception {
+        final String doc = new IndexRecordsForV4().getV4DocFromV3Doc(new File("src/test/resources/v3index/as:4r686.xml"));
+        assertFalse("Index document must not source_f_stored for Law Library.", doc.contains("<field name=\"source_f_stored\">Law"));
     }
     
 }
