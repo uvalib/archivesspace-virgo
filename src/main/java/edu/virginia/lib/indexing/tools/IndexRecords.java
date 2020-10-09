@@ -61,17 +61,24 @@ public class IndexRecords {
         int reindexed = 0;
         List<String> errorRefs = new ArrayList<>();
         final Set<String> refsToUpdate = new HashSet<>();
-        List<String> repos = findUpdatedRepositories(solrUrl, interval);
-        for (String repoRef : repos) {
-            refsToUpdate.addAll(c.listAccessionIds(repoRef));
-            refsToUpdate.addAll(c.listResourceIds(repoRef));
-            published.println(refsToUpdate.size() + " contained accessions and resources will be updated because repository " + repoRef + " was updated.");
+        if (args.length == 0) {
+            List<String> repos = findUpdatedRepositories(solrUrl, interval);
+            for (String repoRef : repos) {
+                refsToUpdate.addAll(c.listAccessionIds(repoRef));
+                refsToUpdate.addAll(c.listResourceIds(repoRef));
+                published.println(refsToUpdate.size() + " contained accessions and resources will be updated because repository " + repoRef + " was updated.");
+            }
+            final Set<String> updatedRefs = findUpdatedRecordsToReindex(solrUrl, interval);
+            published.println(updatedRefs.size() + " accessions and resources had individual updates");
+            refsToUpdate.addAll(updatedRefs);
+            published.println(refsToUpdate.size() + " records to regenerate.");
+            published.flush();
+        } else {
+            published.println("Reindexing items provided on the command line.");
+            for (String arg : args) {
+                refsToUpdate.add(arg);
+            }
         }
-        final Set<String> updatedRefs = findUpdatedRecordsToReindex(solrUrl, interval);
-        published.println(updatedRefs.size() + " accessions and resources had individual updates");
-        refsToUpdate.addAll(updatedRefs);
-        published.println(refsToUpdate.size() + " records to regenerate.");
-        published.flush();
 
         final File marcRecords = new File(marcOutput, new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + "-updates.mrc");
         MarcStreamWriter marcStream = new MarcStreamWriter(new FileOutputStream(marcRecords));
