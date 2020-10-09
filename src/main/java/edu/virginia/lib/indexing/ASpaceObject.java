@@ -438,7 +438,7 @@ public abstract class ASpaceObject {
                             StringBuffer noteText = new StringBuffer();
                             for (int i = 0; i < subnotes.size(); i++) {
                                 JsonObject subnote = subnotes.getJsonObject(i);
-                                if (subnote.getBoolean("publish")) {
+                                if (subnote.getBoolean("publish") && subnote.get("content") != null) {
                                     if (noteText.length() > 0) {
                                         noteText.append("\n");
                                     }
