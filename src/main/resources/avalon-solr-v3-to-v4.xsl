@@ -22,7 +22,7 @@
         <map v3="duration_display" v4="video_run_time_stored" />
         <map v3="genre_display" v4="topic_form_genre_tsearch_stored" />
         <map v3="publisher_display" v4="publisher_name_tsearch_stored" />
-        <map v3="digital_collection_facet" v4="collection_f" />
+        <map v3="digital_collection_facet" v4="digital_collection_f" />
         <map v3="language_facet" v4="language_f" />
         
         <map v3="abstract_display" v4="notes" />
