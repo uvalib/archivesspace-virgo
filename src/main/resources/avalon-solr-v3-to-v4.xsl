@@ -11,7 +11,7 @@
         <!--<map v3="author_facet" v4="author_tsearchf_stored"/> I believe the role-based fields capture this-->
         <map v3="author_added_entry_text" v4="author_added_entry_tsearchf_stored"/>
         <map v3="thumbnail_url_display" v4="thumbnail_url_stored" />
-        <map v3="source_facet" v4="source_f_stored"/>
+        <!--<map v3="source_facet" v4="source_f_stored"/>  intentionally excluding the value of "Digital Library" -->
         <map v3="format_facet" v4="format_f_stored"/>
         <map v3="library_facet" v4="library_f_stored"/>
         <map v3="subject_facet" v4="subject_tsearchf_stored"/>
