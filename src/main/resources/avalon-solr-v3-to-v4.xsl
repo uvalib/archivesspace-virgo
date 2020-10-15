@@ -67,6 +67,7 @@
         <doc>
             <field name="circulating_f">true</field>
             <field name="source_f_stored">Avalon</field>
+            <field name="source_f_stored">UVA Library Digital Repository</field>
             <field name="uva_availability_f_stored">Online</field>
             <field name="anon_availability_f_stored">Online</field>
             <field name="record_date_stored">
