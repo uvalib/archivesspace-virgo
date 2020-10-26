@@ -77,7 +77,7 @@
             <xsl:variable name="video" select="field[@name = 'format_facet'][text() = 'Online Video']"/>
             <xsl:variable name="solrId" select="field[@name = 'id']/text()" />
             <xsl:variable name="avalonId">
-                <xsl:variable name="idsAreTheSame" select="matches($solrId, '^avalon:\d+$')"/>
+                <xsl:variable name="idsAreTheSame" select="matches($solrId, '^avalon:\d{1,8}$')"/>
                 <xsl:if test="$idsAreTheSame"><xsl:value-of select="$solrId"/></xsl:if>
                 <xsl:if test="not($idsAreTheSame)"><xsl:value-of select="substring($solrId, 8)"/></xsl:if>
             </xsl:variable>
