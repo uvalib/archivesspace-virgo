@@ -40,7 +40,7 @@ public class IndexRecordsForV4 {
         
         long since = -1;
         if (p.getProperty("interval") != null) {
-            since = System.currentTimeMillis() - (24*60*60*1000*Integer.parseInt(p.getProperty("interval")));
+            since = System.currentTimeMillis() - (60*60*1000*Integer.parseInt(p.getProperty("interval")));
         }
         
         File aspaceDoc = File.createTempFile("aspace", "index-for-v4-pipeline.xml");
@@ -84,12 +84,12 @@ public class IndexRecordsForV4 {
             if (aspaceSize > 0) {
                 transferFileToS3(pw, aspaceDoc, p.getProperty("bucketName"), p.getProperty("bucketPath") + YYYY.format(now) + "/aspace/" + SECOND.format(now) + ".xml"); 
             } else {
-                pw.println("No aspace records modified in previous " + p.getProperty("interval") + " days.");
+                pw.println("No aspace records modified in previous " + p.getProperty("interval") + " hours.");
             }
             if (avalonSize > 0) {
                 transferFileToS3(pw, avalonDoc, p.getProperty("bucketName"), p.getProperty("bucketPath") + YYYY.format(now) + "/avalon/" + SECOND.format(now) + ".xml"); 
             } else {
-                pw.println("No avalon records modified in previous " + p.getProperty("interval") + " days.");
+                pw.println("No avalon records modified in previous " + p.getProperty("interval") + " hours.");
             }
         } catch (Throwable t) {
             t.printStackTrace(pw);
