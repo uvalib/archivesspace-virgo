@@ -11,7 +11,7 @@
         <!--<map v3="author_facet" v4="author_tsearchf_stored"/> I believe the role-based fields capture this-->
         <map v3="author_added_entry_text" v4="author_added_entry_tsearchf_stored"/>
         <map v3="thumbnail_url_display" v4="thumbnail_url_stored" />
-        <map v3="source_facet" v4="source_f_stored"/>
+        <!--<map v3="source_facet" v4="source_f_stored"/>  intentionally excluding the value of "Digital Library" -->
         <map v3="format_facet" v4="format_f_stored"/>
         <map v3="library_facet" v4="library_f_stored"/>
         <map v3="subject_facet" v4="subject_tsearchf_stored"/>
@@ -22,7 +22,7 @@
         <map v3="duration_display" v4="video_run_time_stored" />
         <map v3="genre_display" v4="topic_form_genre_tsearch_stored" />
         <map v3="publisher_display" v4="publisher_name_tsearch_stored" />
-        <map v3="digital_collection_facet" v4="collection_f" />
+        <map v3="digital_collection_facet" v4="digital_collection_f" />
         <map v3="language_facet" v4="language_f" />
         
         <map v3="abstract_display" v4="notes" />
@@ -67,6 +67,7 @@
         <doc>
             <field name="circulating_f">true</field>
             <field name="source_f_stored">Avalon</field>
+            <field name="source_f_stored">UVA Library Digital Repository</field>
             <field name="uva_availability_f_stored">Online</field>
             <field name="anon_availability_f_stored">Online</field>
             <field name="record_date_stored">
@@ -76,7 +77,7 @@
             <xsl:variable name="video" select="field[@name = 'format_facet'][text() = 'Online Video']"/>
             <xsl:variable name="solrId" select="field[@name = 'id']/text()" />
             <xsl:variable name="avalonId">
-                <xsl:variable name="idsAreTheSame" select="matches($solrId, '^avalon:\d+$')"/>
+                <xsl:variable name="idsAreTheSame" select="matches($solrId, '^avalon:\d{1,8}$')"/>
                 <xsl:if test="$idsAreTheSame"><xsl:value-of select="$solrId"/></xsl:if>
                 <xsl:if test="not($idsAreTheSame)"><xsl:value-of select="substring($solrId, 8)"/></xsl:if>
             </xsl:variable>

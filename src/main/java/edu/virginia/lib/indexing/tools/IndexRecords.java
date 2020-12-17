@@ -43,7 +43,7 @@ public class IndexRecords {
         final String user = p.getProperty("tracksysDbUsername");
         final String pass = p.getProperty("tracksysDbPassword");
 
-        final int interval = Integer.valueOf(p.getProperty("interval"));
+        final int intervalInHours = Integer.valueOf(p.getProperty("interval"));
 
         final File output = new File(p.getProperty("indexOutputDir"));
         final File marcOutput = new File(p.getProperty("marcOutputDir"));
@@ -62,13 +62,13 @@ public class IndexRecords {
         List<String> errorRefs = new ArrayList<>();
         final Set<String> refsToUpdate = new HashSet<>();
         if (args.length == 0) {
-            List<String> repos = findUpdatedRepositories(solrUrl, interval);
+            List<String> repos = findUpdatedRepositories(solrUrl, intervalInHours);
             for (String repoRef : repos) {
                 refsToUpdate.addAll(c.listAccessionIds(repoRef));
                 refsToUpdate.addAll(c.listResourceIds(repoRef));
                 published.println(refsToUpdate.size() + " contained accessions and resources will be updated because repository " + repoRef + " was updated.");
             }
-            final Set<String> updatedRefs = findUpdatedRecordsToReindex(solrUrl, interval);
+            final Set<String> updatedRefs = findUpdatedRecordsToReindex(solrUrl, intervalInHours);
             published.println(updatedRefs.size() + " accessions and resources had individual updates");
             refsToUpdate.addAll(updatedRefs);
             published.println(refsToUpdate.size() + " records to regenerate.");
@@ -108,9 +108,9 @@ public class IndexRecords {
         published.close();
 
         if (errorRefs.isEmpty()) {
-            System.out.println("Updated index and marc records for the " + reindexed + " resources/accessions in ArchivesSpace that changed in the last " + interval + " days.");
+            System.out.println("Updated index and marc records for the " + reindexed + " resources/accessions in ArchivesSpace that changed in the last " + intervalInHours + " hours.");
         } else {
-            System.err.println(errorRefs.size() + " records resulted in errors, " + reindexed + " other index/marc records updated in responses to changes in the last " + interval + " days.");
+            System.err.println(errorRefs.size() + " records resulted in errors, " + reindexed + " other index/marc records updated in responses to changes in the last " + intervalInHours + " hours.");
             System.exit(1);
         }
     }
@@ -121,15 +121,15 @@ public class IndexRecords {
 
     final static String TYPES = "types";
 
-    private static String getQuery(final int daysAgo) {
-        return "user_mtime:[NOW-" + daysAgo + "DAY TO NOW]";
+    private static String getQuery(final int hoursAgo) {
+        return "user_mtime:[NOW-" + hoursAgo + "HOUR TO NOW]";
     }
 
     // http://archivesspace01.lib.virginia.edu:8090/collection1/select?q=user_mtime:[NOW-100DAY%20TO%20NOW]&wt=xml&indent=true&facet=true&facet.field=types
     // &fl=id,types,ancestors,linked_instance_uris,related_accession_uris,collection_uri_u_sstr
-    private static Set<String> findUpdatedRecordsToReindex(final String solrUrl, int daysAgo) throws SolrServerException {
+    private static Set<String> findUpdatedRecordsToReindex(final String solrUrl, int hoursAgo) throws SolrServerException {
         final Set<String> refIds = new HashSet<>();
-        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(daysAgo));
+        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(hoursAgo));
         while (updated.hasNext()) {
             SolrDocument d = updated.next();
             if (hasFieldValue(d, TYPES, "resource")) {
@@ -163,9 +163,9 @@ public class IndexRecords {
         return refIds;
     }
 
-    private static List<String> findUpdatedRepositories(final String solrUrl, int daysAgo) throws SolrServerException {
+    private static List<String> findUpdatedRepositories(final String solrUrl, int hoursAgo) throws SolrServerException {
         final List<String> refIds = new ArrayList<>();
-        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(daysAgo) + " AND " + TYPES + ":repository");
+        Iterator<SolrDocument> updated = SolrHelper.getRecordsForQuery(solrUrl, getQuery(hoursAgo) + " AND " + TYPES + ":repository");
         while (updated.hasNext()) {
             SolrDocument d = updated.next();
             refIds.add((String) d.getFirstValue("id"));
