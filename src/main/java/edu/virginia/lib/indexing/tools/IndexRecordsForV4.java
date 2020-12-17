@@ -17,6 +17,8 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
@@ -37,6 +39,29 @@ public class IndexRecordsForV4 {
         final File report = new File(logs, new SimpleDateFormat("yyyy-MM-dd-").format(new Date()) + "indexed.txt");
         final PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(report, true)));
 
+        IndexRecordsForV4 indexer = new IndexRecordsForV4();
+                
+        // check to determine if the transform has changed
+        Properties transformHashes = new Properties();
+        File cachedHashes = new File("cached-transform-hashes.properties");
+        if (cachedHashes.exists()) {
+            FileInputStream fis = new FileInputStream(cachedHashes);
+            try {
+                transformHashes.load(fis);
+            } finally {
+                fis.close();
+            }
+        }
+        boolean reindexAllAvalon = indexer.getAvalonTransformHash().equals(transformHashes.get("avalon"));
+        transformHashes.put("avalon", indexer.getAvalonTransformHash());
+        if (reindexAllAvalon) {
+            System.out.println("Reindexing all avalon records because the transform has changed.");
+        }
+        boolean reindexAllASpace = indexer.getASpaceTransformHash().equals(transformHashes.get("aspace"));
+        transformHashes.put("aspace", indexer.getASpaceTransformHash());
+        if (reindexAllASpace) {
+            System.out.println("Reindexing all aspace records because the transform has changed.");
+        }
         
         long since = -1;
         if (p.getProperty("interval") != null) {
@@ -49,25 +74,21 @@ public class IndexRecordsForV4 {
         PrintWriter aspacePw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(aspaceDoc)));
         PrintWriter avalonPw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(avalonDoc)));
         
-        IndexRecordsForV4 indexer = new IndexRecordsForV4();
-        
         // find all files since the given date
         int aspaceSize = 0;
         int avalonSize = 0;
         for (File f : output.listFiles()) {
-            if (f.lastModified() > since) {
-                // transform and concatenate them into a single document
-                try {
-                    if (IndexRecordsForV4.isASpaceRecord(f)) {
-                        aspacePw.print(indexer.getV4DocFromV3Doc(f));
-                        aspaceSize ++;
-                    } else {
-                        avalonPw.print(indexer.getV4DocFromV3Doc(f));;
-                        avalonSize ++;
-                    }
-                } catch (Exception ex) {
-                    pw.println("Error producing V4 solr add doc from " + f.getName() + "! (SKIPPED FROM UPDATE)");
+            // transform and concatenate them into a single document
+            try {
+                if (IndexRecordsForV4.isASpaceRecord(f) && (reindexAllASpace || f.lastModified() > since)) {
+                    aspacePw.print(indexer.getV4DocFromV3Doc(f));
+                    aspaceSize ++;
+                } else if (!IndexRecordsForV4.isASpaceRecord(f) && (reindexAllAvalon || f.lastModified() > since)) {
+                    avalonPw.print(indexer.getV4DocFromV3Doc(f));;
+                    avalonSize ++;
                 }
+            } catch (Exception ex) {
+                pw.println("Error producing V4 solr add doc from " + f.getName() + "! (SKIPPED FROM UPDATE)");
             }
         }
         
@@ -91,6 +112,10 @@ public class IndexRecordsForV4 {
             } else {
                 pw.println("No avalon records modified in previous " + p.getProperty("interval") + " days.");
             }
+            
+            // now that the transform is done, write out the hashes of the transform that were applied
+            transformHashes.save(new FileOutputStream(cachedHashes), "updated after successful transformation on " + new Date() + ".");
+            
         } catch (Throwable t) {
             t.printStackTrace(pw);
             System.err.println("Error transmitting index updates to S3!");
@@ -112,13 +137,26 @@ public class IndexRecordsForV4 {
     
     private Transformer aspaceV3ToV4;
 
+    private String aspaceTransformHash;
+    
     private Transformer avalonV3ToV4;
     
+    private String avalonTransformHash;
+        
     public IndexRecordsForV4() throws Exception {
         SAXTransformerFactory f = (SAXTransformerFactory) TransformerFactory.newInstance("net.sf.saxon.TransformerFactoryImpl", null);
         aspaceV3ToV4 = f.newTemplates(new StreamSource(getClass().getClassLoader().getResourceAsStream("aspace-solr-v3-to-v4.xsl"))).newTransformer();
+        aspaceTransformHash = DigestUtils.md5Hex(getClass().getClassLoader().getResourceAsStream("aspace-solr-v3-to-v4.xsl"));
         avalonV3ToV4 = f.newTemplates(new StreamSource(getClass().getClassLoader().getResourceAsStream("avalon-solr-v3-to-v4.xsl"))).newTransformer();
-        
+        avalonTransformHash = DigestUtils.md5Hex(getClass().getClassLoader().getResourceAsStream("avalon-solr-v3-to-v4.xsl"));
+    }
+    
+    public String getASpaceTransformHash() {
+        return this.aspaceTransformHash;
+    }
+    
+    public String getAvalonTransformHash() {
+        return this.avalonTransformHash;
     }
     
     public String getV4DocFromV3Doc(final File v3) throws Exception {

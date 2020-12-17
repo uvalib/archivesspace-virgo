@@ -85,14 +85,14 @@
             <xsl:if test="$audio and not($video)">
                 <field name="url_label_str_stored">Listen Online</field>
                 <field name="pool_f">music_recordings</field>
-                <field name="work_title3_key_sort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '//MusicRecording')" /></field>
-                <field name="work_title2_key_sort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '/', translate(normalize-space(field[@name = 'author_facet'][1]/text()), ' ', '_'), '/MusicRecording')" /></field>
+                <field name="work_title3_key_ssort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '//MusicRecording')" /></field>
+                <field name="work_title2_key_ssort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '/', translate(normalize-space(field[@name = 'author_facet'][1]/text()), ' ', '_'), '/MusicRecording')" /></field>
             </xsl:if>
             <xsl:if test="$video">
                 <field name="url_label_str_stored">Watch Online</field>
                 <field name="pool_f">video</field>
-                <field name="work_title3_key_sort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '//video')" /></field>
-                <field name="work_title2_key_sort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '/', translate(normalize-space(field[@name = 'author_facet'][1]/text()), ' ', '_'), '/video')" /></field>
+                <field name="work_title3_key_ssort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '//video')" /></field>
+                <field name="work_title2_key_ssort"><xsl:value-of select="concat(translate(normalize-space(field[@name = 'title_sort_facet']/text()), ' &quot;', '_'), '/', translate(normalize-space(field[@name = 'author_facet'][1]/text()), ' ', '_'), '/video')" /></field>
             </xsl:if>
             <!-- flat_broke_with_children_women_in_the_age_of_welfare_reform//video -->
             <field name="uva_availability_f_stored">On shelf</field>
