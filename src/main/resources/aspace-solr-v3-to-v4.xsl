@@ -56,6 +56,12 @@
         <field name="mss_work_key_sort">
             <xsl:value-of select="translate(text(), 'ms ', 'MS_')"/>
         </field>
+        <field name="work_title3_key_ssort">
+            <xsl:value-of select="translate(text(), 'ms ', 'MS_')"/>
+        </field>
+        <field name="work_title2_key_ssort">
+            <xsl:value-of select="translate(text(), 'ms ', 'MS_')"/>
+        </field>
     </xsl:template>
 
     <xsl:template match="field[@name = 'date_multisort_i']">

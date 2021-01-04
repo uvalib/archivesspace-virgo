@@ -114,7 +114,15 @@ public class IndexRecordsForV4 {
             }
             
             // now that the transform is done, write out the hashes of the transform that were applied
-            transformHashes.save(new FileOutputStream(cachedHashes), "updated after successful transformation on " + new Date() + ".");
+            FileOutputStream out = new FileOutputStream(cachedHashes);
+            try {
+                transformHashes.store(out, "updated after successful transformation on " + new Date() + ".");
+                System.out.println("Saved transform hashes to " + cachedHashes + ".");
+                transformHashes.store(System.out, null);
+            } finally {
+                out.flush();
+                out.close();
+            }
             
         } catch (Throwable t) {
             t.printStackTrace(pw);
