@@ -52,12 +52,12 @@ public class IndexRecordsForV4 {
                 fis.close();
             }
         }
-        boolean reindexAllAvalon = indexer.getAvalonTransformHash().equals(transformHashes.get("avalon"));
+        boolean reindexAllAvalon = !indexer.getAvalonTransformHash().equals(transformHashes.get("avalon"));
         transformHashes.put("avalon", indexer.getAvalonTransformHash());
         if (reindexAllAvalon) {
             System.out.println("Reindexing all avalon records because the transform has changed.");
         }
-        boolean reindexAllASpace = indexer.getASpaceTransformHash().equals(transformHashes.get("aspace"));
+        boolean reindexAllASpace = !indexer.getASpaceTransformHash().equals(transformHashes.get("aspace"));
         transformHashes.put("aspace", indexer.getASpaceTransformHash());
         if (reindexAllASpace) {
             System.out.println("Reindexing all aspace records because the transform has changed.");
