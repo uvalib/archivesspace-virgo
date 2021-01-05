@@ -30,7 +30,7 @@
             <xsl:apply-templates select="*"/>
         </add>
     </xsl:template>
-
+ 
     <xsl:template match="doc">
         <doc>
             <field name="pool_f">archival</field>
