@@ -43,7 +43,7 @@ public class IndexRecordsForV4 {
                 
         // check to determine if the transform has changed
         Properties transformHashes = new Properties();
-        File cachedHashes = new File("cached-transform-hashes.properties");
+        File cachedHashes = new File("cached-transform-hashes-" + p.getProperty("bucketName") + ".properties");
         if (cachedHashes.exists()) {
             FileInputStream fis = new FileInputStream(cachedHashes);
             try {
