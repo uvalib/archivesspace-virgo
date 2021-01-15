@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     xmlns:xs="http://www.w3.org/2001/XMLSchema" exclude-result-prefixes="xs" version="2.0">
-
+ 
+ 
     <xsl:variable name="fieldMap">
         <map v3="id" v4="id"/>
         <map v3="shadowed_location_facet" v4="shadowed_location_f"/>
