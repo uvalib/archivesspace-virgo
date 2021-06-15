@@ -11,6 +11,7 @@ import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.Subfield;
+import org.marc4j.util.StringNaturalCompare;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -378,7 +379,8 @@ public abstract class ASpaceObject {
             Collections.sort(containers, new Comparator<ASpaceTopContainer>() {
                 @Override
                 public int compare(ASpaceTopContainer o1, ASpaceTopContainer o2) {
-                    return o1.getContainerCallNumber("").compareTo(o2.getContainerCallNumber(""));
+                    StringNaturalCompare comp = new StringNaturalCompare(); 
+                    return comp.compare(o1.getContainerCallNumber(""), o2.getContainerCallNumber(""));
                 }
             });
             for (ASpaceTopContainer container : containers) {
