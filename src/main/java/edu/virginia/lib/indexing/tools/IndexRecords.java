@@ -122,7 +122,13 @@ public class IndexRecords {
     final static String TYPES = "types";
 
     private static String getQuery(final int hoursAgo) {
-        return "user_mtime:[NOW-" + hoursAgo + "HOUR TO NOW]";
+        if (hoursAgo == -1) {
+            System.out.println("hours ago = -1  reindexing all items.");
+            return "user_mtime:[* TO NOW]";
+        }
+        else {
+            return "user_mtime:[NOW-" + hoursAgo + "HOUR TO NOW]";
+        }
     }
 
     // http://archivesspace01.lib.virginia.edu:8090/collection1/select?q=user_mtime:[NOW-100DAY%20TO%20NOW]&wt=xml&indent=true&facet=true&facet.field=types

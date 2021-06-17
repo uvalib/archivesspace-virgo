@@ -379,7 +379,7 @@ public abstract class ASpaceObject {
             Collections.sort(containers, new Comparator<ASpaceTopContainer>() {
                 @Override
                 public int compare(ASpaceTopContainer o1, ASpaceTopContainer o2) {
-                    StringNaturalCompare comp = new StringNaturalCompare(); 
+                    StringNaturalCompare comp = new StringNaturalCompare();
                     return comp.compare(o1.getContainerCallNumber(""), o2.getContainerCallNumber(""));
                 }
             });
