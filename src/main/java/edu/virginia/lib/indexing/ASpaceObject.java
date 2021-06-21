@@ -1,6 +1,7 @@
 package edu.virginia.lib.indexing;
 
 import edu.virginia.lib.indexing.helpers.JsonHelper;
+import edu.virginia.lib.indexing.helpers.StringNaturalCompare;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClients;
@@ -11,7 +12,6 @@ import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.Subfield;
-import org.marc4j.util.StringNaturalCompare;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -376,13 +376,22 @@ public abstract class ASpaceObject {
             // Top Containers
             JsonArrayBuilder containersBuilder = Json.createArrayBuilder();
             List<ASpaceTopContainer> containers = new ArrayList<>(getTopContainers());
+            // System.err.println("Pre-Sort");
+            // for (ASpaceTopContainer container : containers) {
+            //     System.err.println(container.getContainerCallNumber(getCallNumber()));
+            // }
             Collections.sort(containers, new Comparator<ASpaceTopContainer>() {
                 @Override
                 public int compare(ASpaceTopContainer o1, ASpaceTopContainer o2) {
-                    StringNaturalCompare comp = new StringNaturalCompare();
-                    return comp.compare(o1.getContainerCallNumber(""), o2.getContainerCallNumber(""));
+                	StringNaturalCompare comp = new StringNaturalCompare(); 
+                	return comp.compare(o1.getContainerCallNumber(""), o2.getContainerCallNumber(""));
                 }
             });
+            // System.err.println("Post-Sort");
+            // for (ASpaceTopContainer container : containers) {
+            //     System.err.println(container.getContainerCallNumber(getCallNumber()));
+            // }
+
             for (ASpaceTopContainer container : containers) {
                 JsonObjectBuilder b = Json.createObjectBuilder();
                 b.add("library", library);
